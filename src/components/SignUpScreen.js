@@ -150,8 +150,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: 'green',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 21,
   },
 });
 
 export default SignUpScreen;
+
+
+
