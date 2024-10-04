@@ -122,7 +122,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   selectedOptionText: {
-    color: '#fff', // White text for the selected option
+    color: '#fff', // White text for the selected outcome
   },
 });
 
