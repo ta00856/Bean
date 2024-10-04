@@ -1,32 +1,49 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
+  const getApiUrl = () => {
+    return 'https://7wxy3171va.execute-api.eu-west-2.amazonaws.com/dev/login';
+  };
+
   const handleLogin = async () => {
+    console.log('Login initiated with email:', email);  // Log the email used for login
+    const loginData = { email, password };
+
     try {
-      let userData;
-      if (Platform.OS === 'web') {
-        userData = localStorage.getItem(email);
+      const response = await fetch(getApiUrl(), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(loginData),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Login response:', result);  // Log the response from the server
+        Alert.alert('Login Successful', `Welcome ${result.email}`);
+
+        // Log before navigating to the next screen
+        console.log('Navigating to CoffeePreference with email:', result.email);
+        navigation.navigate('CoffeePreference', { email: result.email });  // Pass email to next screen
+      } else if (response.status === 401) {
+        Alert.alert('Login Failed', 'Incorrect password');
+        console.log('Login failed: Incorrect password');
+      } else if (response.status === 404) {
+        Alert.alert('User not found', 'Please sign up first.');
+        console.log('Login failed: User not found');
       } else {
-        userData = await AsyncStorage.getItem(email);
-      }
-      if (userData) {
-        const parsedData = JSON.parse(userData);
-        if (parsedData.password === password) {
-          console.log('User logged in:', parsedData);
-          navigation.navigate('CoffeePreference'); // Navigate to the next screen
-        } else {
-          alert('Incorrect password');
-        }
-      } else {
-        alert('User not found');
+        const errorMessage = await response.text();
+        console.log(`Error during login (Status: ${response.status}):`, errorMessage);
+        Alert.alert('Login Failed', 'Something went wrong. Please try again.');
       }
     } catch (error) {
       console.log('Error during login:', error);
+      Alert.alert('Network Error', 'Unable to connect to the server. Please try again.');
     }
   };
 
@@ -50,21 +67,8 @@ const LoginScreen = ({ navigation }) => {
         onChangeText={setPassword}
       />
 
-      <TouchableOpacity 
-        style={styles.button}
-        onPress={handleLogin}
-      >
+      <TouchableOpacity style={styles.button} onPress={handleLogin}>
         <Text style={styles.buttonText}>Login</Text>
-      </TouchableOpacity>
-
-      <Text style={styles.orText}>or</Text>
-
-      <TouchableOpacity style={[styles.socialButton, styles.googleButton]}>
-        <Text style={styles.socialButtonText}>Login with Google</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity style={[styles.socialButton, styles.facebookButton]}>
-        <Text style={styles.socialButtonText}>Login with Facebook</Text>
       </TouchableOpacity>
     </View>
   );
@@ -100,30 +104,6 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   buttonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  orText: {
-    textAlign: 'center',
-    marginVertical: 10,
-    fontSize: 16,
-    color: '#333',
-  },
-  socialButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 5,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  googleButton: {
-    backgroundColor: '#db4437',
-  },
-  facebookButton: {
-    backgroundColor: '#3b5998',
-  },
-  socialButtonText: {
     color: '#ffffff',
     fontSize: 16,
     fontWeight: 'bold',

@@ -1,8 +1,6 @@
 import * as React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Ionicons } from '@expo/vector-icons'; // Make sure to install @expo/vector-icons or use your own icons
 
 import HomeScreen from './components/HomeScreen';
 import SplashScreen from './components/SplashScreen';
@@ -21,46 +19,10 @@ import MenuScreen from './components/MenuScreen';
 import CafeOwnerSignupScreen from './screens/CafeOwnerSignupScreen';
 import CafeOwnerLoginScreen from './components/CafeOwnerLoginScreen';
 import CafeOwnerDashboardScreen from './components/CafeOwnerDashboardScreen';
+import ScanQRCode from './components/ScanQRCode'
 
+// Create the Stack Navigator
 const Stack = createStackNavigator();
-const Tab = createBottomTabNavigator();
-
-// Create a Bottom Tab Navigator
-function MainTabs() {
-  return (
-    <Tab.Navigator
-      screenOptions={({ route }) => ({
-        tabBarIcon: ({ color, size }) => {
-          let iconName;
-
-          if (route.name === 'Home') {
-            iconName = 'home';
-          } else if (route.name === 'Grocery') {
-            iconName = 'basket';
-          } else if (route.name === 'Browse') {
-            iconName = 'search';
-          } else if (route.name === 'Account') {
-            iconName = 'person';
-          } else if (route.name === 'Orders') {
-            iconName = 'list';
-          }
-
-          return <Ionicons name={iconName} size={size} color={color} />;
-        },
-      })}
-      tabBarOptions={{
-        activeTintColor: 'black',
-        inactiveTintColor: 'gray',
-      }}
-    >
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Grocery" component={HomeScreen} />
-      <Tab.Screen name="Browse" component={HomeScreen} />
-      <Tab.Screen name="Account" component={HomeScreen} />
-      <Tab.Screen name="Orders" component={HomeScreen} />
-    </Tab.Navigator>
-  );
-}
 
 function AppNavigator() {
   return (
@@ -118,17 +80,17 @@ function AppNavigator() {
         />
         <Stack.Screen 
           name="Home"
-          component={MainTabs} // Replace HomeScreen with MainTabs to include the bottom tabs
+          component={HomeScreen}  // Directly use HomeScreen instead of MainTabs
           options={{ headerShown: false }} 
         />
-         <Stack.Screen 
+        <Stack.Screen 
           name="Menu" 
           component={MenuScreen} 
           options={{ headerShown: true, title: 'Menu' }} 
         />
         <Stack.Screen 
           name="ReviewedCafes" 
-          component={ReviewedCafesScreen} // Add the new screen here
+          component={ReviewedCafesScreen} 
           options={{ headerShown: false }} 
         />
         <Stack.Screen 
@@ -136,9 +98,9 @@ function AppNavigator() {
           component={LoyaltyDetailsScreen} 
           options={{ headerShown: false }} 
         />
-         <Stack.Screen 
+        <Stack.Screen 
           name="CafeOwnerSignup" 
-          component={CafeOwnerSignupScreen}  // Register the new screen
+          component={CafeOwnerSignupScreen}  
           options={{ headerShown: false }} 
         />
         <Stack.Screen 
@@ -151,9 +113,11 @@ function AppNavigator() {
           component={CafeOwnerDashboardScreen} 
           options={{ headerShown: false }} 
         />
+        <Stack.Screen name="ScanQRCode" component={ScanQRCode} 
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );
 }
 
-export default AppNavigator;
+export default AppNavigator; //gh

@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import ProgressBar from '../components/ProgressBar';
 
-const BioScreen = ({ navigation }) => {
+const BioScreen = ({ navigation, route }) => {
+  const { email } = route.params;  // Get the email from the previous screen
   const progress = 0.8;
   const [selectedOption, setSelectedOption] = useState('');
 
@@ -14,10 +15,54 @@ const BioScreen = ({ navigation }) => {
     'I’m more of a homebrew person',
   ];
 
-  const handleSelectOption = (option) => {
-    setSelectedOption(option);
-    // Navigate to AgeRangeScreen after selecting an option
-    navigation.navigate('AgeRange'); 
+  useEffect(() => {
+    // Log when the component is mounted and check if email exists
+    console.log('BioScreen loaded');
+    if (email) {
+      console.log('Email passed from previous screen:', email);
+    } else {
+      console.log('No email passed!');
+      Alert.alert('Error', 'No email was provided.');
+    }
+  }, [email]);
+
+  const saveVisitFrequency = async (frequency) => {
+    console.log('Saving visit frequency:', frequency);  // Log the selected option
+
+    try {
+      const apiUrl = 'https://7wxy3171va.execute-api.eu-west-2.amazonaws.com/dev/save_preferences';
+
+      const data = {
+        email: email,  // Use the email passed from the previous screen
+        visit_frequency: frequency  // Save the selected visit frequency
+      };
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (response.ok) {
+        console.log('Visit frequency saved successfully');
+        navigation.navigate('AgeRange', { email });  // Navigate to the next screen and pass the email
+      } else {
+        const errorMessage = await response.text();
+        console.log(`Error saving visit frequency: ${errorMessage}`);
+        Alert.alert('Error', 'Failed to save your visit frequency. Please try again.');
+      }
+    } catch (error) {
+      console.log('Network error while saving visit frequency:', error);
+      Alert.alert('Network Error', 'Unable to connect to the server.');
+    }
+  };
+
+  const handleSelectOption = (frequency) => {
+    console.log('Option selected:', frequency);  // Log the selected frequency
+    setSelectedOption(frequency);
+    saveVisitFrequency(frequency);  // Save the selected frequency to the backend
   };
 
   return (

@@ -1,4 +1,7 @@
 {
+  "scripts": {
+    "start": "expo start"
+  },
   "dependencies": {
     "@expo/metro-runtime": "~3.2.3",
     "@react-native-async-storage/async-storage": "1.23.1",
@@ -6,7 +9,11 @@
     "@react-navigation/bottom-tabs": "^6.6.1",
     "@react-navigation/native": "^6.1.18",
     "@react-navigation/stack": "^6.4.1",
+    "axios": "^1.7.7",
     "expo": "^51.0.28",
+    "expo-barcode-scanner": "~13.0.1",
+    "expo-location": "~17.0.1",
+    "http-proxy-middleware": "^3.0.2",
     "r": "^0.0.5",
     "react-dom": "^18.2.0",
     "react-native-gesture-handler": "^2.18.1",

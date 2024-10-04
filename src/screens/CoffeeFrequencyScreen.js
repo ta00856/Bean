@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import ProgressBar from '../components/ProgressBar';
 
-const CoffeeFrequencyScreen = ({ navigation }) => {
+const CoffeeFrequencyScreen = ({ navigation, route }) => {
+  const { email } = route.params;  // Get the email from the previous screen
   const progress = 0.6;
   const [selectedOption, setSelectedOption] = useState('');
 
@@ -14,16 +15,61 @@ const CoffeeFrequencyScreen = ({ navigation }) => {
     'I’m just here for great coffee!',
   ];
 
-  const handleSelectOption = (option) => {
-    setSelectedOption(option);
-    // Navigate to BioScreen after selecting an option
-    navigation.navigate('Bio'); 
+  useEffect(() => {
+    // Log when the component is mounted and check if email exists
+    console.log('CoffeeFrequencyScreen loaded');
+    if (email) {
+      console.log('Email passed from previous screen:', email);
+    } else {
+      console.log('No email passed!');
+      Alert.alert('Error', 'No email was provided.');
+    }
+  }, [email]);
+
+  const saveShopVibe = async (vibe) => {
+    console.log('Saving coffee shop vibe:', vibe);  // Log the selected option
+
+    try {
+      const apiUrl = 'https://7wxy3171va.execute-api.eu-west-2.amazonaws.com/dev/save_preferences';
+
+      const data = {
+        email: email,  // Use the email passed from the previous screen
+        shop_vibe: vibe  // Save the selected coffee shop vibe
+      };
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (response.ok) {
+        console.log('Coffee shop vibe saved successfully');
+        navigation.navigate('Bio', { email });  // Navigate to the next screen and pass the email
+      } else {
+        const errorMessage = await response.text();
+        console.log(`Error saving coffee shop vibe: ${errorMessage}`);
+        Alert.alert('Error', 'Failed to save your coffee shop vibe. Please try again.');
+      }
+    } catch (error) {
+      console.log('Network error while saving coffee shop vibe:', error);
+      Alert.alert('Network Error', 'Unable to connect to the server.');
+    }
+  };
+
+  const handleSelectOption = (vibe) => {
+    console.log('Option selected:', vibe);  // Log the selected option
+    setSelectedOption(vibe);
+    saveShopVibe(vibe);  // Save the selected shop vibe to the backend
   };
 
   return (
     <View style={styles.container}>
       <ProgressBar progress={progress} />
       <Text style={styles.header}>What’s your favorite coffee shop vibe?</Text>
+      
       {options.map((option, index) => (
         <TouchableOpacity
           key={index}

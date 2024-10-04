@@ -8,19 +8,13 @@ const SignUpScreen = ({ navigation }) => {
   const [phone, setPhone] = useState('');
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);  // New state for success message
 
-  // Determine the correct API URL based on the platform
-  const getApiUrl = () => {
-    if (Platform.OS === 'web') {
-      return 'http://127.0.0.1:5001/signup';  // Web localhost
-    } else {
-      return 'http://192.168.1.250:5001/signup';  // Replace with your computer's local IP address for mobile
-    }
-  };
+  // Use the new API Gateway URL
+  const apiUrl = 'https://7wxy3171va.execute-api.eu-west-2.amazonaws.com/dev/signup';
 
   const handleSignup = async () => {
     const userData = { email, password, phone };
     try {
-      const response = await fetch(getApiUrl(), {  // Use the dynamic API URL
+      const response = await fetch(apiUrl, {  // Use the new API URL
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -97,6 +91,14 @@ const SignUpScreen = ({ navigation }) => {
             >
               <Text style={styles.buttonText}>Sign Up as Cafe Owner</Text>
             </TouchableOpacity>
+
+            {/* Add the Login Button here */}
+            <TouchableOpacity 
+              onPress={() => navigation.navigate('Login')}  // Navigate to Login screen
+              style={[styles.button, { marginTop: 20, backgroundColor: '#3b5998' }]}  // Different style for login button
+            >
+              <Text style={styles.buttonText}>Login</Text>
+            </TouchableOpacity>
           </>
         )}
       </View>
@@ -155,6 +157,4 @@ const styles = StyleSheet.create({
 });
 
 export default SignUpScreen;
-
-
 

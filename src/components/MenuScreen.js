@@ -9,9 +9,7 @@ const MenuScreen = ({ route, navigation }) => {
     <View style={styles.container}>
       <View style={styles.headerContainer}>
         {/* Back Button */}
-        <TouchableOpacity onPress={() => navigation.navigate('Home')}>
-          <Ionicons name="arrow-back" size={24} color="black" />
-        </TouchableOpacity>
+       
         <Text style={styles.header}>{shopName} Menu</Text>
         {/* Local QR Code Image */}
         <Image

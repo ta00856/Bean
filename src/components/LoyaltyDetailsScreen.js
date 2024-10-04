@@ -2,31 +2,41 @@ import React from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-const LoyaltyDetailsScreen = ({ navigation }) => {
-  // Dummy data for loyalty progress at different coffee shops
-  const loyaltyData = [
-    { id: '1', shopName: 'Black Sheep', progress: '3/5', message: '2 more to go for a free coffee!' },
-    { id: '2', shopName: 'Muffin Break', progress: '800/1000', message: '200 more points needed to get a free cup.' },
-    // Add more shops and their loyalty progress here
-  ];
+const LoyaltyDetailsScreen = ({ route, navigation }) => {
+  const { loyaltyData } = route.params; // Get loyalty data passed from ScanQRCode
+
+  // Convert the loyalty data object into an array for easy mapping in FlatList
+  const loyaltyDataArray = Object.keys(loyaltyData).map((cafeId) => {
+    return {
+      cafeId,
+      purchases: loyaltyData[cafeId].purchases,
+      threshold: loyaltyData[cafeId].threshold,
+    };
+  });
 
   return (
     <View style={styles.container}>
       {/* Back Button */}
-      <TouchableOpacity onPress={() => navigation.navigate('ReviewedCafes')} style={styles.backButton}>
+      <TouchableOpacity onPress={() => navigation.navigate('Home')} style={styles.backButton}>
         <Ionicons name="arrow-back" size={24} color="black" />
       </TouchableOpacity>
 
       <Text style={styles.header}>Loyalty Progress</Text>
       
       <FlatList
-        data={loyaltyData}
-        keyExtractor={item => item.id}
+        data={loyaltyDataArray}
+        keyExtractor={(item) => item.cafeId}
         renderItem={({ item }) => (
           <View style={styles.shopItem}>
-            <Text style={styles.shopName}>{item.shopName}</Text>
-            <Text style={styles.progress}>{item.progress}</Text>
-            <Text style={styles.message}>{item.message}</Text>
+            <Text style={styles.shopName}>Cafe ID: {item.cafeId}</Text>
+            <Text style={styles.progress}>
+              {item.purchases}/{item.threshold} purchases made
+            </Text>
+            <Text style={styles.message}>
+              {item.purchases >= item.threshold
+                ? 'Congratulations! You earned a free coffee!'
+                : `${item.threshold - item.purchases} more purchases needed to get a free coffee.`}
+            </Text>
           </View>
         )}
       />
@@ -76,5 +86,4 @@ const styles = StyleSheet.create({
 });
 
 export default LoyaltyDetailsScreen;
-
 
