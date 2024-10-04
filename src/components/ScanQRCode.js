@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, Button, StyleSheet, Alert } from 'react-native';
 import { BarCodeScanner } from 'expo-barcode-scanner';
-import axios from 'axios'; // To make API requests
-import AsyncStorage from '@react-native-async-storage/async-storage'; // To get the user's email
+import axios from 'axios';
 
-const ScanQRCode = ({ navigation }) => {
+const ScanQRCode = ({ route, navigation }) => {
   const [hasPermission, setHasPermission] = useState(null);
   const [scanned, setScanned] = useState(false);
+
+  // Get the email from route params
+  const { email } = route.params;  // Retrieve the email passed from the previous screen
 
   useEffect(() => {
     const getBarCodeScannerPermissions = async () => {
@@ -17,33 +19,43 @@ const ScanQRCode = ({ navigation }) => {
     getBarCodeScannerPermissions();
   }, []);
 
-  const handleBarCodeScanned = async ({ type, data }) => {
-    setScanned(true);
-    // Assume the QR code contains the café ID
-    const cafeId = data;
-
+  const handleScanQRCode = async (cafeId, rewardId) => {
     try {
-      // Retrieve the logged-in user's email from AsyncStorage
-      const email = await AsyncStorage.getItem('userEmail');
       if (!email) {
-        throw new Error("User not logged in or email not found.");
+        Alert.alert('Error', 'Email not found, please log in first.');
+        return;
       }
 
-      // Make API call to update loyalty progress for this café
+      // Make API call to scan the QR code and fetch loyalty rewards
       const response = await axios.post('https://7wxy3171va.execute-api.eu-west-2.amazonaws.com/dev/scan_qr', {
-        email,
+        email: email,  // Use the email passed via route params
         cafe_id: cafeId,
+        reward_id: rewardId,  // Include reward_id from scanned data
       });
 
-      // Fetch the loyalty progress from API response
-      const loyaltyProgressData = response.data.loyalty_progress;
-
-      // Navigate to the LoyaltyDetailsScreen and pass the loyalty data
-      navigation.navigate('LoyaltyDetails', { loyaltyData: loyaltyProgressData });
-
+      // Navigate to LoyaltyDetails screen with loyalty data
+      navigation.navigate('LoyaltyDetails', { loyaltyData: response.data.loyalty_progress });
     } catch (error) {
-      console.error('Error processing QR code:', error);
-      Alert.alert('Error', 'Failed to process the QR code. Please try again.');
+      console.error('Error scanning QR code:', error);
+      Alert.alert('Error', 'Failed to scan QR code. Please try again.');
+    }
+  };
+
+  const handleBarCodeScanned = ({ type, data }) => {
+    setScanned(true);
+
+    // Assume the QR code contains a URL with both cafe_id and reward_id
+    const parsedData = new URL(data); // Parse the scanned URL
+    const cafeId = parsedData.searchParams.get('cafe_id');
+    const rewardId = parsedData.searchParams.get('reward_id');
+
+    // Ensure both cafeId and rewardId exist
+    if (cafeId && rewardId) {
+      // Call the function to handle scanning and API request
+      handleScanQRCode(cafeId, rewardId);
+    } else {
+      Alert.alert('Error', 'Invalid QR code.');
+      setScanned(false); // Allow to scan again
     }
   };
 

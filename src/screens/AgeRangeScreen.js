@@ -38,7 +38,7 @@ const AgeRangeScreen = ({ navigation, route }) => {
 
       if (response.ok) {
         console.log('Age range saved successfully');
-        navigation.navigate('YouAreSetToGo', { email });  // Navigate to the next screen and pass the email
+        navigation.navigate('Home', { email });  // Navigate to the next screen and pass the email
       } else {
         const errorMessage = await response.text();
         console.log(`Error saving age range: ${errorMessage}`);

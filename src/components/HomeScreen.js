@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, TextInput, Image, StyleSheet, ScrollView, TouchableOpacity, Alert, SafeAreaView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons'; // Ionicons for icons
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 
-const HomeScreen = ({ navigation }) => {
+const HomeScreen = ({ navigation, route }) => {
+  const { email } = route.params; // Retrieve email from previous screen's route params
   const [location, setLocation] = useState(null);
   const [address, setAddress] = useState('Fetching location...');
   const [errorMsg, setErrorMsg] = useState(null);
@@ -59,7 +59,11 @@ const HomeScreen = ({ navigation }) => {
 
     getLocationAndCoffeeShops();
     checkOrderPlaced();
-  }, []);
+
+    // Log the email passed from the previous screen
+    console.log('Email passed to HomeScreen:', email);
+
+  }, [email]);
 
   // Function to fetch address using reverse geocoding
   const fetchAddress = async (latitude, longitude) => {
@@ -143,11 +147,14 @@ const HomeScreen = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
+        {/* Display email at the top */}
+        
+
         <View style={styles.headerContainer}>
           <Text style={styles.locationText}>{address}</Text>
           <View style={styles.iconContainer}>
             {/* Add the Scan Icon here */}
-            <TouchableOpacity onPress={() => navigation.navigate('ScanQRCode')}>
+            <TouchableOpacity onPress={() => navigation.navigate('ScanQRCode',{ email:email})}>
               <Ionicons name="qr-code-outline" size={30} color="black" style={styles.scanIcon} />
             </TouchableOpacity>
 
@@ -215,6 +222,8 @@ const HomeScreen = ({ navigation }) => {
     </SafeAreaView>
   );
 };
+
+
 
 // Add styles for the scan icon
 const styles = StyleSheet.create({
