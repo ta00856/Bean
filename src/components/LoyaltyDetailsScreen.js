@@ -7,10 +7,13 @@ const LoyaltyDetailsScreen = ({ route, navigation }) => {
 
   // Convert the loyalty data object into an array for easy mapping in FlatList
   const loyaltyDataArray = Object.keys(loyaltyData).map((cafeId) => {
+    const purchases = Number(loyaltyData.purchases || 0);  // Ensure purchases is a number
+    const threshold = Number(loyaltyData.threshold || 1);  // Ensure threshold is a number and default to 1 if missing
+
     return {
       cafeId,
-      purchases: loyaltyData[cafeId].purchases,
-      threshold: loyaltyData[cafeId].threshold,
+      purchases,
+      threshold,
     };
   });
 
@@ -86,4 +89,3 @@ const styles = StyleSheet.create({
 });
 
 export default LoyaltyDetailsScreen;
-
