@@ -1,62 +1,62 @@
 import React from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 const LoyaltyDetailsScreen = ({ route, navigation }) => {
-  const { loyaltyData } = route.params; // Get loyalty data passed from ScanQRCode
+  const { loyaltyData } = route.params || {};
 
-  // Convert the loyalty data object into an array for easy mapping in FlatList
-  const loyaltyDataArray = Object.keys(loyaltyData).map((cafeId) => {
-    const purchases = Number(loyaltyData.purchases || 0);  // Ensure purchases is a number
-    const threshold = Number(loyaltyData.threshold || 1);  // Ensure threshold is a number and default to 1 if missing
-
-    return {
-      cafeId,
-      purchases,
-      threshold,
-    };
-  });
+  const getStatusMessage = (purchases, threshold) => {
+    if (purchases === 0) {
+      return "You haven't bought any coffee yet. Start your journey to a free coffee!";
+    } else if (purchases >= threshold) {
+      return "Congratulations! You've earned a free coffee!";
+    } else {
+      const remainingCoffees = threshold - purchases;
+      return `You've bought ${purchases} coffee${purchases > 1 ? 's' : ''}. ${remainingCoffees} more to go for a free coffee!`;
+    }
+  };
 
   return (
-    <View style={styles.container}>
-      {/* Back Button */}
+    <ScrollView style={styles.container}>
       <TouchableOpacity onPress={() => navigation.navigate('Home')} style={styles.backButton}>
         <Ionicons name="arrow-back" size={24} color="black" />
       </TouchableOpacity>
 
       <Text style={styles.header}>Loyalty Progress</Text>
-      
-      <FlatList
-        data={loyaltyDataArray}
-        keyExtractor={(item) => item.cafeId}
-        renderItem={({ item }) => (
-          <View style={styles.shopItem}>
-            <Text style={styles.shopName}>Cafe ID: {item.cafeId}</Text>
-            <Text style={styles.progress}>
-              {item.purchases}/{item.threshold} purchases made
-            </Text>
-            <Text style={styles.message}>
-              {item.purchases >= item.threshold
-                ? 'Congratulations! You earned a free coffee!'
-                : `${item.threshold - item.purchases} more purchases needed to get a free coffee.`}
-            </Text>
-          </View>
-        )}
-      />
-    </View>
+
+      {loyaltyData ? (
+        <View style={styles.shopItem}>
+          <Text style={styles.shopName}>Cafe ID: {loyaltyData.cafe_id}</Text>
+          <Text style={styles.progress}>
+            Status: {loyaltyData.loyalty_status === 'pending approval' ? 'Approval Pending' : loyaltyData.loyalty_status}
+          </Text>
+          <Text style={styles.purchases}>Purchases: {loyaltyData.current_purchases}</Text>
+          <Text style={styles.threshold}>Threshold: {loyaltyData.threshold}</Text>
+          <Text style={styles.reward}>Reward: {loyaltyData.reward_description}</Text>
+          <Text style={styles.message}>
+            {getStatusMessage(loyaltyData.current_purchases, loyaltyData.threshold)}
+          </Text>
+        </View>
+      ) : (
+        <Text>No loyalty progress data available.</Text>
+      )}
+    </ScrollView>
   );
 };
+
+
+
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    paddingTop: 80, // Ensure padding to avoid overlap with status bar
+    paddingTop: 80,
     backgroundColor: '#ffffff',
   },
   backButton: {
     position: 'absolute',
-    top: 40, // Adjust based on your needs
+    top: 40,
     left: 20,
     zIndex: 1,
   },
@@ -68,9 +68,10 @@ const styles = StyleSheet.create({
   },
   shopItem: {
     padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
-    marginBottom: 20, // Add margin to prevent overlap with next item
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 10,
+    marginBottom: 20,
   },
   shopName: {
     fontSize: 18,
@@ -82,9 +83,15 @@ const styles = StyleSheet.create({
     color: '#555',
     marginBottom: 5,
   },
+  purchases: {
+    fontSize: 16,
+    color: '#555',
+    marginBottom: 5,
+  },
   message: {
-    fontSize: 14,
-    color: '#888',
+    fontSize: 16,
+    color: '#4a4a4a',
+    fontStyle: 'italic',
   },
 });
 

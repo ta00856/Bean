@@ -6,16 +6,13 @@ import axios from 'axios';
 const ScanQRCode = ({ route, navigation }) => {
   const [hasPermission, setHasPermission] = useState(null);
   const [scanned, setScanned] = useState(false);
-
-  // Get the email from route params
-  const { email } = route.params;  // Retrieve the email passed from the previous screen
+  const { email } = route.params;
 
   useEffect(() => {
     const getBarCodeScannerPermissions = async () => {
       const { status } = await BarCodeScanner.requestPermissionsAsync();
       setHasPermission(status === 'granted');
     };
-
     getBarCodeScannerPermissions();
   }, []);
 
@@ -26,15 +23,19 @@ const ScanQRCode = ({ route, navigation }) => {
         return;
       }
 
-      // Make API call to scan the QR code and fetch loyalty rewards
       const response = await axios.post('https://7wxy3171va.execute-api.eu-west-2.amazonaws.com/dev/scan_qr', {
-        email: email,  // Use the email passed via route params
+        email: email,
         cafe_id: cafeId,
-        reward_id: rewardId,  // Include reward_id from scanned data
+        reward_id: rewardId,
       });
 
-      // Navigate to LoyaltyDetails screen with loyalty data
-      navigation.navigate('LoyaltyDetails', { loyaltyData: response.data.loyalty_progress });
+      console.log('API Response:', response.data);
+
+      if (response.data && response.data.loyalty_status) {
+        navigation.navigate('LoyaltyDetails', { loyaltyData: response.data });
+      } else {
+        throw new Error('Invalid API response format');
+      }
     } catch (error) {
       console.error('Error scanning QR code:', error);
       Alert.alert('Error', 'Failed to scan QR code. Please try again.');
@@ -43,28 +44,32 @@ const ScanQRCode = ({ route, navigation }) => {
 
   const handleBarCodeScanned = ({ type, data }) => {
     setScanned(true);
+    console.log('Scanned QR code data:', data);
 
-    // Assume the QR code contains a URL with both cafe_id and reward_id
-    const parsedData = new URL(data); // Parse the scanned URL
-    const cafeId = parsedData.searchParams.get('cafe_id');
-    const rewardId = parsedData.searchParams.get('reward_id');
+    try {
+      if (data && data.startsWith('http')) {
+        const parsedUrl = new URL(data);
+        const queryParams = new URLSearchParams(parsedUrl.search);
+        const cafeId = queryParams.get('cafe_id');
+        const rewardId = queryParams.get('reward_id');
 
-    // Ensure both cafeId and rewardId exist
-    if (cafeId && rewardId) {
-      // Call the function to handle scanning and API request
-      handleScanQRCode(cafeId, rewardId);
-    } else {
-      Alert.alert('Error', 'Invalid QR code.');
-      setScanned(false); // Allow to scan again
+        if (cafeId && rewardId) {
+          handleScanQRCode(cafeId, rewardId);
+        } else {
+          throw new Error('Invalid QR code format - missing parameters');
+        }
+      } else {
+        throw new Error('Invalid QR code format - not a valid URL');
+      }
+    } catch (error) {
+      console.error('Error parsing QR code data:', error);
+      Alert.alert('Error', 'Failed to parse QR code. Invalid QR code format.');
+      setScanned(false);
     }
   };
 
-  if (hasPermission === null) {
-    return <Text>Requesting for camera permission</Text>;
-  }
-  if (hasPermission === false) {
-    return <Text>No access to camera</Text>;
-  }
+  if (hasPermission === null) return <Text>Requesting for camera permission</Text>;
+  if (hasPermission === false) return <Text>No access to camera</Text>;
 
   return (
     <View style={styles.container}>
@@ -86,4 +91,3 @@ const styles = StyleSheet.create({
 });
 
 export default ScanQRCode;
-
