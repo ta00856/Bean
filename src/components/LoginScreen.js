@@ -10,7 +10,7 @@ const LoginScreen = ({ navigation }) => {
   };
 
   const handleLogin = async () => {
-    console.log('Login initiated with email:', email);  // Log the email used for login
+    console.log('Login initiated with email:', email);
     const loginData = { email, password };
 
     try {
@@ -24,12 +24,16 @@ const LoginScreen = ({ navigation }) => {
 
       if (response.ok) {
         const result = await response.json();
-        console.log('Login response:', result);  // Log the response from the server
-        Alert.alert('Login Successful', `Welcome ${result.email}`);
+        console.log('Login response:', result);
 
-        // Log before navigating to the next screen
-        console.log('Navigating to CoffeePreference with email:', result.email);
-        navigation.navigate('CoffeePreference', { email: result.email });  // Pass email to next screen
+        if (result.onboarding_completed) {
+          Alert.alert('Login Successful', `Welcome back, ${result.email}`);
+          navigation.navigate('Home', { email: result.email });
+        } else {
+          Alert.alert('Login Successful', `Welcome ${result.email}. Let's complete your profile.`);
+          console.log('Navigating to CoffeePreference with email:', result.email);
+          navigation.navigate('CoffeePreference', { email: result.email });
+        }
       } else if (response.status === 401) {
         Alert.alert('Login Failed', 'Incorrect password');
         console.log('Login failed: Incorrect password');

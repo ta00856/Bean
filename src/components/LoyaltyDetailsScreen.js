@@ -1,13 +1,37 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import axios from 'axios';
 
 const LoyaltyDetailsScreen = ({ route, navigation }) => {
-  const { loyaltyData } = route.params || {};
+  const { email, loyaltyData: initialLoyaltyData } = route.params;
+  const [loyaltyData, setLoyaltyData] = useState(initialLoyaltyData);
+  const [loading, setLoading] = useState(!initialLoyaltyData);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (!initialLoyaltyData) {
+      fetchLoyaltyData();
+    }
+  }, []);
+
+  const fetchLoyaltyData = async () => {
+    try {
+      const response = await axios.get(`https://7wxy3171va.execute-api.eu-west-2.amazonaws.com/dev/user_loyalty_progress?email=${email}`);
+      setLoyaltyData(response.data.loyalty_rewards);
+      setLoading(false);
+    } catch (err) {
+      console.error('Error fetching loyalty data:', err);
+      setError('Failed to fetch loyalty data. Please try again later.');
+      setLoading(false);
+    }
+  };
 
   const getStatusMessage = (purchases, threshold, status) => {
     if (status === 'reward_earned') {
       return "Congratulations! You've earned a free coffee!";
+    } else if (status === 'pending approval') {
+      return "Your purchase is pending approval. Check back later!";
     } else if (purchases === 0) {
       return "You haven't bought any coffee yet. Start your journey to a free coffee!";
     } else {
@@ -16,9 +40,25 @@ const LoyaltyDetailsScreen = ({ route, navigation }) => {
     }
   };
 
+  if (loading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.errorText}>{error}</Text>
+      </View>
+    );
+  }
+
   return (
     <ScrollView style={styles.container}>
-      <TouchableOpacity onPress={() => navigation.navigate('Home')} style={styles.backButton}>
+      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
         <Ionicons name="arrow-back" size={24} color="black" />
       </TouchableOpacity>
 
@@ -29,7 +69,7 @@ const LoyaltyDetailsScreen = ({ route, navigation }) => {
           <View key={index} style={styles.shopItem}>
             <Text style={styles.shopName}>Cafe ID: {cafeData.cafe_id}</Text>
             <Text style={styles.progress}>
-              Status: {cafeData.status === 'reward_earned' ? 'Reward Earned!' : cafeData.status}
+              Status: {cafeData.status}
             </Text>
             <Text style={styles.purchases}>Purchases: {cafeData.current_purchases}</Text>
             <Text style={styles.threshold}>Threshold: {cafeData.threshold}</Text>
@@ -40,7 +80,7 @@ const LoyaltyDetailsScreen = ({ route, navigation }) => {
           </View>
         ))
       ) : (
-        <Text>No loyalty progress data available.</Text>
+        <Text style={styles.noDataText}>No loyalty progress data available.</Text>
       )}
     </ScrollView>
   );
@@ -52,6 +92,11 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 80,
     backgroundColor: '#ffffff',
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   backButton: {
     position: 'absolute',
@@ -101,6 +146,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#4a4a4a',
     fontStyle: 'italic',
+  },
+  errorText: {
+    color: 'red',
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  noDataText: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginTop: 20,
   },
 });
 

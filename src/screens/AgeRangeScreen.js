@@ -3,11 +3,10 @@ import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import ProgressBar from '../components/ProgressBar';
 
 const AgeRangeScreen = ({ navigation, route }) => {
-  const { email } = route.params;  // Get the email from the previous screen
+  const { email } = route.params;
   const progress = 1.0;
 
   useEffect(() => {
-    // Log when the component is mounted and check if email exists
     console.log('AgeRangeScreen loaded');
     if (email) {
       console.log('Email passed from previous screen:', email);
@@ -18,14 +17,14 @@ const AgeRangeScreen = ({ navigation, route }) => {
   }, [email]);
 
   const saveAgeRange = async (ageRange) => {
-    console.log('Saving age range:', ageRange);  // Log the selected option
+    console.log('Saving age range:', ageRange);
 
     try {
       const apiUrl = 'https://7wxy3171va.execute-api.eu-west-2.amazonaws.com/dev/save_preferences';
 
       const data = {
-        email: email,  // Use the email passed from the previous screen
-        age_range: ageRange  // Save the selected age range
+        email: email,
+        age_range: ageRange
       };
 
       const response = await fetch(apiUrl, {
@@ -38,7 +37,7 @@ const AgeRangeScreen = ({ navigation, route }) => {
 
       if (response.ok) {
         console.log('Age range saved successfully');
-        navigation.navigate('Home', { email });  // Navigate to the next screen and pass the email
+        await completeOnboarding();
       } else {
         const errorMessage = await response.text();
         console.log(`Error saving age range: ${errorMessage}`);
@@ -50,9 +49,35 @@ const AgeRangeScreen = ({ navigation, route }) => {
     }
   };
 
+  const completeOnboarding = async () => {
+    try {
+      const apiUrl = 'https://7wxy3171va.execute-api.eu-west-2.amazonaws.com/dev/complete_onboarding';
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      if (response.ok) {
+        console.log('Onboarding completed successfully');
+        navigation.navigate('Home', { email });
+      } else {
+        const errorMessage = await response.text();
+        console.log(`Error completing onboarding: ${errorMessage}`);
+        Alert.alert('Error', 'Failed to complete onboarding. Please try again.');
+      }
+    } catch (error) {
+      console.log('Network error while completing onboarding:', error);
+      Alert.alert('Network Error', 'Unable to connect to the server.');
+    }
+  };
+
   const handleSelectOption = (ageRange) => {
-    console.log('Option selected:', ageRange);  // Log the selected age range
-    saveAgeRange(ageRange);  // Save the selected age range to the backend
+    console.log('Option selected:', ageRange);
+    saveAgeRange(ageRange);
   };
 
   return (

@@ -120,4 +120,4 @@ function AppNavigator() {
   );
 }
 
-export default AppNavigator; //gh
+export default AppNavigator; 

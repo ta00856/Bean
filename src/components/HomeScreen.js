@@ -159,9 +159,9 @@ const HomeScreen = ({ navigation, route }) => {
             </TouchableOpacity>
 
             {/* Loyalty Badge Icon */}
-            <TouchableOpacity onPress={() => navigation.navigate('LoyaltyDetails')}>
-              <Ionicons name="ribbon-outline" size={30} color="black" style={styles.loyaltyIcon} />
-            </TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate('LoyaltyDetails', { email: email })}>
+  <Ionicons name="ribbon-outline" size={30} color="black" style={styles.loyaltyIcon} />
+</TouchableOpacity>
 
             <TouchableOpacity onPress={() => navigation.navigate('ReviewedCafes')}>
               <View style={styles.profileIcon}>
