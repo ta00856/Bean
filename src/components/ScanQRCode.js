@@ -16,31 +16,44 @@ const ScanQRCode = ({ route, navigation }) => {
     getBarCodeScannerPermissions();
   }, []);
 
+
   const handleScanQRCode = async (cafeId, rewardId) => {
-    try {
-      if (!email) {
-        Alert.alert('Error', 'Email not found, please log in first.');
-        return;
-      }
-
-      const response = await axios.post('https://7wxy3171va.execute-api.eu-west-2.amazonaws.com/dev/scan_qr', {
-        email: email,
-        cafe_id: cafeId,
-        reward_id: rewardId,
-      });
-
-      console.log('API Response:', response.data);
-
-      if (response.data && response.data.loyalty_status) {
-        navigation.navigate('LoyaltyDetails', { loyaltyData: response.data });
-      } else {
-        throw new Error('Invalid API response format');
-      }
-    } catch (error) {
-      console.error('Error scanning QR code:', error);
-      Alert.alert('Error', 'Failed to scan QR code. Please try again.');
+  try {
+    if (!email) {
+      Alert.alert('Error', 'Email not found, please log in first.');
+      return;
     }
-  };
+
+    console.log('Sending request to:', 'https://7wxy3171va.execute-api.eu-west-2.amazonaws.com/dev/scan_qr');
+    console.log('Request payload:', { email, cafe_id: cafeId, reward_id: rewardId });
+
+    const response = await axios.post('https://7wxy3171va.execute-api.eu-west-2.amazonaws.com/dev/scan_qr', {
+      email: email,
+      cafe_id: cafeId,
+      reward_id: rewardId,
+    });
+
+    console.log('API Response:', response.data);
+
+    if (response.data && response.data.loyalty_rewards) {
+      navigation.navigate('LoyaltyDetails', { loyaltyData: response.data.loyalty_rewards });
+    } else {
+      throw new Error('Invalid API response format');
+    }
+  } catch (error) {
+    console.error('Error scanning QR code:', error);
+    if (error.response) {
+      console.error('Error response:', error.response.data);
+      console.error('Error status:', error.response.status);
+      console.error('Error headers:', error.response.headers);
+    } else if (error.request) {
+      console.error('Error request:', error.request);
+    } else {
+      console.error('Error message:', error.message);
+    }
+    Alert.alert('Error', 'Failed to scan QR code. Please try again.');
+  }
+};
 
   const handleBarCodeScanned = ({ type, data }) => {
     setScanned(true);

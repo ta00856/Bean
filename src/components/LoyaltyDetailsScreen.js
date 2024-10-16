@@ -5,11 +5,11 @@ import { Ionicons } from '@expo/vector-icons';
 const LoyaltyDetailsScreen = ({ route, navigation }) => {
   const { loyaltyData } = route.params || {};
 
-  const getStatusMessage = (purchases, threshold) => {
-    if (purchases === 0) {
-      return "You haven't bought any coffee yet. Start your journey to a free coffee!";
-    } else if (purchases >= threshold) {
+  const getStatusMessage = (purchases, threshold, status) => {
+    if (status === 'reward_earned') {
       return "Congratulations! You've earned a free coffee!";
+    } else if (purchases === 0) {
+      return "You haven't bought any coffee yet. Start your journey to a free coffee!";
     } else {
       const remainingCoffees = threshold - purchases;
       return `You've bought ${purchases} coffee${purchases > 1 ? 's' : ''}. ${remainingCoffees} more to go for a free coffee!`;
@@ -24,28 +24,27 @@ const LoyaltyDetailsScreen = ({ route, navigation }) => {
 
       <Text style={styles.header}>Loyalty Progress</Text>
 
-      {loyaltyData ? (
-        <View style={styles.shopItem}>
-          <Text style={styles.shopName}>Cafe ID: {loyaltyData.cafe_id}</Text>
-          <Text style={styles.progress}>
-            Status: {loyaltyData.loyalty_status === 'pending approval' ? 'Approval Pending' : loyaltyData.loyalty_status}
-          </Text>
-          <Text style={styles.purchases}>Purchases: {loyaltyData.current_purchases}</Text>
-          <Text style={styles.threshold}>Threshold: {loyaltyData.threshold}</Text>
-          <Text style={styles.reward}>Reward: {loyaltyData.reward_description}</Text>
-          <Text style={styles.message}>
-            {getStatusMessage(loyaltyData.current_purchases, loyaltyData.threshold)}
-          </Text>
-        </View>
+      {loyaltyData && Object.keys(loyaltyData).length > 0 ? (
+        Object.values(loyaltyData).map((cafeData, index) => (
+          <View key={index} style={styles.shopItem}>
+            <Text style={styles.shopName}>Cafe ID: {cafeData.cafe_id}</Text>
+            <Text style={styles.progress}>
+              Status: {cafeData.status === 'reward_earned' ? 'Reward Earned!' : cafeData.status}
+            </Text>
+            <Text style={styles.purchases}>Purchases: {cafeData.current_purchases}</Text>
+            <Text style={styles.threshold}>Threshold: {cafeData.threshold}</Text>
+            <Text style={styles.reward}>Reward: {cafeData.reward_description || 'Not specified'}</Text>
+            <Text style={styles.message}>
+              {getStatusMessage(cafeData.current_purchases, cafeData.threshold, cafeData.status)}
+            </Text>
+          </View>
+        ))
       ) : (
         <Text>No loyalty progress data available.</Text>
       )}
     </ScrollView>
   );
 };
-
-
-
 
 const styles = StyleSheet.create({
   container: {
@@ -84,6 +83,16 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   purchases: {
+    fontSize: 16,
+    color: '#555',
+    marginBottom: 5,
+  },
+  threshold: {
+    fontSize: 16,
+    color: '#555',
+    marginBottom: 5,
+  },
+  reward: {
     fontSize: 16,
     color: '#555',
     marginBottom: 5,
