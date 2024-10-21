@@ -67,12 +67,13 @@ const LoyaltyDetailsScreen = ({ route, navigation }) => {
       {loyaltyData && Object.keys(loyaltyData).length > 0 ? (
         Object.values(loyaltyData).map((cafeData, index) => (
           <View key={index} style={styles.shopItem}>
-            <Text style={styles.shopName}>Cafe ID: {cafeData.cafe_id}</Text>
+            <Text style={styles.shopName}>{cafeData.cafe_name}</Text>
+            <Text style={styles.location}>{cafeData.location}</Text>
             <Text style={styles.progress}>
               Status: {cafeData.status}
             </Text>
-            <Text style={styles.purchases}>Purchases: {cafeData.current_purchases}</Text>
-            <Text style={styles.threshold}>Threshold: {cafeData.threshold}</Text>
+            <Text style={styles.purchases}>Current no.of purchases done: {cafeData.current_purchases}</Text>
+            <Text style={styles.threshold}>Total purchases need to be done: {cafeData.threshold}</Text>
             <Text style={styles.reward}>Reward: {cafeData.reward_description || 'Not specified'}</Text>
             <Text style={styles.message}>
               {getStatusMessage(cafeData.current_purchases, cafeData.threshold, cafeData.status)}
@@ -118,9 +119,14 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   shopName: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 5,
+  },
+  location: {
+    fontSize: 16,
+    color: '#555',
+    marginBottom: 10,
   },
   progress: {
     fontSize: 16,

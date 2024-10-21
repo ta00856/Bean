@@ -1,17 +1,17 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, TextInput, Image, StyleSheet, ScrollView, TouchableOpacity, Alert, SafeAreaView } from 'react-native';
+import { View, Text, TextInput, Image, StyleSheet, ScrollView, TouchableOpacity, Alert, SafeAreaView, Keyboard } from 'react-native';
 import { Ionicons } from '@expo/vector-icons'; // Ionicons for icons
 import * as Location from 'expo-location';
 
 const HomeScreen = ({ navigation, route }) => {
   const { email } = route.params; // Retrieve email from previous screen's route params
   const [location, setLocation] = useState(null);
+  const [manualLocation, setManualLocation] = useState(''); // Manual location input
   const [address, setAddress] = useState('Fetching location...');
   const [errorMsg, setErrorMsg] = useState(null);
   const [coffeeShops, setCoffeeShops] = useState([]);
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [total, setTotal] = useState(0);
-
   const locationFetched = useRef(false);
 
   // Google API Key (for both Places and Geocoding)
@@ -62,7 +62,6 @@ const HomeScreen = ({ navigation, route }) => {
 
     // Log the email passed from the previous screen
     console.log('Email passed to HomeScreen:', email);
-
   }, [email]);
 
   // Function to fetch address using reverse geocoding
@@ -89,25 +88,7 @@ const HomeScreen = ({ navigation, route }) => {
     }
   };
 
-  // Haversine formula to calculate the distance between two latitude/longitude points
-  const calculateDistance = (lat1, lon1, lat2, lon2) => {
-    const R = 6371e3; // Earth's radius in meters
-    const toRadians = degree => degree * (Math.PI / 180);
-
-    const φ1 = toRadians(lat1);
-    const φ2 = toRadians(lat2);
-    const Δφ = toRadians(lat2 - lat1);
-    const Δλ = toRadians(lon2 - lon1);
-
-    const a =
-      Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-      Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-    const distance = R * c; // in meters
-    return distance / 1609.34; // Convert to miles
-  };
-
+  // Function to fetch coffee shops
   const fetchCoffeeShops = async (latitude, longitude) => {
     try {
       const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${latitude},${longitude}&radius=1500&type=cafe&keyword=coffee&key=${googleApiKey}`;
@@ -137,6 +118,48 @@ const HomeScreen = ({ navigation, route }) => {
     }
   };
 
+  // Haversine formula to calculate the distance between two latitude/longitude points
+  const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371e3; // Earth's radius in meters
+    const toRadians = degree => degree * (Math.PI / 180);
+
+    const φ1 = toRadians(lat1);
+    const φ2 = toRadians(lat2);
+    const Δφ = toRadians(lat2 - lat1);
+    const Δλ = toRadians(lon2 - lon1);
+
+    const a =
+      Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+      Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    const distance = R * c; // in meters
+    return distance / 1609.34; // Convert to miles
+  };
+
+  // Function to handle manual location search
+  const handleManualLocationSearch = async () => {
+    if (!manualLocation) return;
+    Keyboard.dismiss();
+    
+    try {
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${manualLocation}&key=${googleApiKey}`;
+      const response = await fetch(url);
+      const result = await response.json();
+
+      if (result.status === 'OK') {
+        const { lat, lng } = result.results[0].geometry.location;
+        setLocation({ coords: { latitude: lat, longitude: lng } });
+        fetchCoffeeShops(lat, lng);
+      } else {
+        setErrorMsg('Location not found. Please try another address.');
+      }
+    } catch (error) {
+      console.error('Error fetching geocode data:', error);
+      setErrorMsg('Unable to search for the entered location.');
+    }
+  };
+
   const handlePayment = () => {
     alert(`Paying ${total}`);
     setTotal(0);
@@ -147,21 +170,16 @@ const HomeScreen = ({ navigation, route }) => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        {/* Display email at the top */}
-        
-
         <View style={styles.headerContainer}>
           <Text style={styles.locationText}>{address}</Text>
           <View style={styles.iconContainer}>
-            {/* Add the Scan Icon here */}
-            <TouchableOpacity onPress={() => navigation.navigate('ScanQRCode',{ email:email})}>
+            <TouchableOpacity onPress={() => navigation.navigate('ScanQRCode', { email: email })}>
               <Ionicons name="qr-code-outline" size={30} color="black" style={styles.scanIcon} />
             </TouchableOpacity>
 
-            {/* Loyalty Badge Icon */}
             <TouchableOpacity onPress={() => navigation.navigate('LoyaltyDetails', { email: email })}>
-  <Ionicons name="ribbon-outline" size={30} color="black" style={styles.loyaltyIcon} />
-</TouchableOpacity>
+              <Ionicons name="ribbon-outline" size={30} color="black" style={styles.loyaltyIcon} />
+            </TouchableOpacity>
 
             <TouchableOpacity onPress={() => navigation.navigate('ReviewedCafes')}>
               <View style={styles.profileIcon}>
@@ -171,7 +189,6 @@ const HomeScreen = ({ navigation, route }) => {
           </View>
         </View>
 
-        {/* Pay Button */}
         {orderPlaced && (
           <TouchableOpacity style={styles.payButton} onPress={handlePayment}>
             <Text style={styles.payButtonText}>Pay ${total.toFixed(2)}</Text>
@@ -182,8 +199,14 @@ const HomeScreen = ({ navigation, route }) => {
           <View style={styles.searchContainer}>
             <TextInput
               style={styles.searchInput}
-              placeholder="Search Coffee Shops"
+              placeholder="Nearby Coffee Shops by Postcode/Location"
+              value={manualLocation}
+              onChangeText={setManualLocation}
+              onSubmitEditing={handleManualLocationSearch}
             />
+            <TouchableOpacity onPress={handleManualLocationSearch}>
+              <Text style={styles.searchButton}>Search</Text>
+            </TouchableOpacity>
           </View>
 
           <TouchableOpacity style={styles.adContainer}>
@@ -223,9 +246,7 @@ const HomeScreen = ({ navigation, route }) => {
   );
 };
 
-
-
-// Add styles for the scan icon
+// Add styles for the manual search functionality
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -252,10 +273,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   scanIcon: {
-    marginRight: 15, // Adjusted margin to align with other icons
+    marginRight: 15,
   },
   loyaltyIcon: {
-    marginRight: 15, // Adjusted margin to align with profile icon
+    marginRight: 15,
   },
   profileIcon: {
     width: 40,
@@ -295,14 +316,22 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     marginBottom: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   searchInput: {
+    flex: 1,
     height: 40,
     borderColor: '#cccccc',
     borderWidth: 1,
     borderRadius: 20,
     paddingLeft: 10,
     backgroundColor: '#f1f1f1',
+  },
+  searchButton: {
+    paddingLeft: 10,
+    color: '#007BFF',
+    fontWeight: 'bold',
   },
   adContainer: {
     alignItems: 'center',

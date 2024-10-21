@@ -1,26 +1,27 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ImageBackground, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ImageBackground, Platform, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SignUpScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
-  const [showSuccessMessage, setShowSuccessMessage] = useState(false);  // New state for success message
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
-  // Use the new API Gateway URL
   const apiUrl = 'https://7wxy3171va.execute-api.eu-west-2.amazonaws.com/dev/signup';
 
   const handleSignup = async () => {
     const userData = { email, password, phone };
     try {
-      const response = await fetch(apiUrl, {  // Use the new API URL
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(userData),
       });
+
+      const responseData = await response.json();
 
       if (response.ok) {
         console.log('User data saved:', userData);
@@ -30,18 +31,23 @@ const SignUpScreen = ({ navigation }) => {
           await AsyncStorage.setItem('userEmail', email);
         }
 
-        // Show success message for 2 seconds
         setShowSuccessMessage(true);
         setTimeout(() => {
           setShowSuccessMessage(false);
           navigation.navigate('Login');
-        }, 2000); // 2 seconds
+        }, 2000);
       } else {
-        const errorMessage = await response.text();
-        console.log(`Error saving user data (Status: ${response.status}):`, errorMessage);
+        if (response.status === 409) {
+          // Handle duplicate email or phone
+          Alert.alert('Signup Failed', responseData.error);
+        } else {
+          Alert.alert('Error', 'Failed to sign up. Please try again.');
+        }
+        console.log(`Error saving user data (Status: ${response.status}):`, responseData.error);
       }
     } catch (error) {
       console.log('Network error saving user data:', error);
+      Alert.alert('Network Error', 'Failed to connect to the server. Please check your internet connection.');
     }
   };
 
@@ -92,10 +98,9 @@ const SignUpScreen = ({ navigation }) => {
               <Text style={styles.buttonText}>Sign Up as Cafe Owner</Text>
             </TouchableOpacity>
 
-            {/* Add the Login Button here */}
             <TouchableOpacity 
-              onPress={() => navigation.navigate('Login')}  // Navigate to Login screen
-              style={[styles.button, { marginTop: 20, backgroundColor: '#3b5998' }]}  // Different style for login button
+              onPress={() => navigation.navigate('Login')}
+              style={[styles.button, { marginTop: 20, backgroundColor: '#3b5998' }]}
             >
               <Text style={styles.buttonText}>Login</Text>
             </TouchableOpacity>
@@ -105,6 +110,7 @@ const SignUpScreen = ({ navigation }) => {
     </ImageBackground>
   );
 };
+
 
 const styles = StyleSheet.create({
   backgroundImage: {
