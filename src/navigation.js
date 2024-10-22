@@ -20,6 +20,8 @@ import CafeOwnerSignupScreen from './screens/CafeOwnerSignupScreen';
 import CafeOwnerLoginScreen from './components/CafeOwnerLoginScreen';
 import CafeOwnerDashboardScreen from './components/CafeOwnerDashboardScreen';
 import ScanQRCode from './components/ScanQRCode'
+import OtpVerificationScreen from './components/OtpVerificationScreen'
+
 
 // Create the Stack Navigator
 const Stack = createStackNavigator();
@@ -38,6 +40,13 @@ function AppNavigator() {
           component={SignUpScreen} 
           options={{ headerShown: false }} 
         />
+        <Stack.Screen 
+  name="OtpVerification" 
+  component={OtpVerificationScreen}
+  options={{ headerShown: false }}
+/>
+
+
         <Stack.Screen 
           name="Login" 
           component={LoginScreen} 

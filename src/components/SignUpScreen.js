@@ -1,17 +1,44 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ImageBackground, Platform, Alert } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { 
+  View, 
+  Text, 
+  TextInput, 
+  TouchableOpacity, 
+  StyleSheet, 
+  ImageBackground, 
+  Platform, 
+  Alert,
+  ActivityIndicator 
+} from 'react-native';
 
 const SignUpScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
-  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const apiUrl = 'https://7wxy3171va.execute-api.eu-west-2.amazonaws.com/dev/signup';
 
   const handleSignup = async () => {
+    if (!email || !password || !phone) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      Alert.alert('Error', 'Please enter a valid email address');
+      return;
+    }
+
+    if (phone.length < 10) {
+      Alert.alert('Error', 'Please enter a valid phone number');
+      return;
+    }
+
+    setIsLoading(true);
     const userData = { email, password, phone };
+    
     try {
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -24,30 +51,21 @@ const SignUpScreen = ({ navigation }) => {
       const responseData = await response.json();
 
       if (response.ok) {
-        console.log('User data saved:', userData);
-        if (Platform.OS === 'web') {
-          localStorage.setItem('userEmail', email);
-        } else {
-          await AsyncStorage.setItem('userEmail', email);
+        if (responseData.requiresVerification) {
+          navigation.navigate('OtpVerification', { email });
+          Alert.alert('Success', 'Please check your email for verification code');
         }
-
-        setShowSuccessMessage(true);
-        setTimeout(() => {
-          setShowSuccessMessage(false);
-          navigation.navigate('Login');
-        }, 2000);
       } else {
         if (response.status === 409) {
-          // Handle duplicate email or phone
           Alert.alert('Signup Failed', responseData.error);
         } else {
           Alert.alert('Error', 'Failed to sign up. Please try again.');
         }
-        console.log(`Error saving user data (Status: ${response.status}):`, responseData.error);
       }
     } catch (error) {
-      console.log('Network error saving user data:', error);
-      Alert.alert('Network Error', 'Failed to connect to the server. Please check your internet connection.');
+      Alert.alert('Network Error', 'Failed to connect to the server.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -59,58 +77,59 @@ const SignUpScreen = ({ navigation }) => {
       <View style={styles.overlay}>
         <Text style={styles.header}>Sign Up</Text>
 
-        {showSuccessMessage ? (
-          <Text style={styles.successMessage}>Signup successful! Redirecting...</Text>
-        ) : (
-          <>
-            <TextInput
-              style={styles.input}
-              placeholder="Email"
-              keyboardType="email-address"
-              value={email}
-              onChangeText={setEmail}
-            />
+        <TextInput
+          style={styles.input}
+          placeholder="Email"
+          keyboardType="email-address"
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          editable={!isLoading}
+        />
 
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              secureTextEntry
-              value={password}
-              onChangeText={setPassword}
-            />
+        <TextInput
+          style={styles.input}
+          placeholder="Password"
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
+          editable={!isLoading}
+        />
 
-            <TextInput
-              style={styles.input}
-              placeholder="Phone"
-              keyboardType="phone-pad"
-              value={phone}
-              onChangeText={setPhone}
-            />
+        <TextInput
+          style={styles.input}
+          placeholder="Phone"
+          keyboardType="phone-pad"
+          value={phone}
+          onChangeText={setPhone}
+          editable={!isLoading}
+        />
 
-            <TouchableOpacity style={styles.button} onPress={handleSignup}>
-              <Text style={styles.buttonText}>Register</Text>
-            </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.button, isLoading && styles.disabledButton]}
+          onPress={handleSignup}
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <ActivityIndicator color="#ffffff" />
+          ) : (
+            <Text style={styles.buttonText}>Register</Text>
+          )}
+        </TouchableOpacity>
 
-            <TouchableOpacity 
-              onPress={() => navigation.navigate('CafeOwnerSignup')}
-              style={[styles.button, { marginTop: 20 }]}
-            >
-              <Text style={styles.buttonText}>Sign Up as Cafe Owner</Text>
-            </TouchableOpacity>
+      
 
-            <TouchableOpacity 
-              onPress={() => navigation.navigate('Login')}
-              style={[styles.button, { marginTop: 20, backgroundColor: '#3b5998' }]}
-            >
-              <Text style={styles.buttonText}>Login</Text>
-            </TouchableOpacity>
-          </>
-        )}
+        <TouchableOpacity 
+          onPress={() => navigation.navigate('Login')}
+          style={[styles.button, { marginTop: 20, backgroundColor: '#3b5998' }]}
+          disabled={isLoading}
+        >
+          <Text style={styles.buttonText}>Login</Text>
+        </TouchableOpacity>
       </View>
     </ImageBackground>
   );
 };
-
 
 const styles = StyleSheet.create({
   backgroundImage: {
@@ -148,19 +167,17 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     alignItems: 'center',
     marginTop: 20,
+    minHeight: 45,
+    justifyContent: 'center',
   },
   buttonText: {
     color: '#ffffff',
     fontSize: 16,
     fontWeight: 'bold',
   },
-  successMessage: {
-    fontSize: 18,
-    color: 'green',
-    textAlign: 'center',
-    marginBottom: 21,
-  },
+  disabledButton: {
+    opacity: 0.7,
+  }
 });
 
 export default SignUpScreen;
-
