@@ -1,5 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { 
+  View, 
+  Text, 
+  TextInput, 
+  TouchableOpacity, 
+  StyleSheet, 
+  Alert 
+} from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
@@ -26,13 +34,22 @@ const LoginScreen = ({ navigation }) => {
         const result = await response.json();
         console.log('Login response:', result);
 
+        // Store the token
+        await AsyncStorage.setItem('userToken', result.access_token);
+
         if (result.onboarding_completed) {
           Alert.alert('Login Successful', `Welcome back, ${result.email}`);
-          navigation.navigate('Home', { email: result.email });
+          navigation.navigate('Home', { 
+            email: result.email,
+            token: result.access_token
+          });
         } else {
           Alert.alert('Login Successful', `Welcome ${result.email}. Let's complete your profile.`);
           console.log('Navigating to CoffeePreference with email:', result.email);
-          navigation.navigate('CoffeePreference', { email: result.email });
+          navigation.navigate('CoffeePreference', { 
+            email: result.email,
+            token: result.access_token
+          });
         }
       } else if (response.status === 401) {
         Alert.alert('Login Failed', 'Incorrect password');
@@ -61,6 +78,7 @@ const LoginScreen = ({ navigation }) => {
         keyboardType="email-address"
         value={email}
         onChangeText={setEmail}
+        autoCapitalize="none"
       />
 
       <TextInput

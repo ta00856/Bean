@@ -3,44 +3,52 @@ import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import ProgressBar from '../components/ProgressBar';
 
 const AgeRangeScreen = ({ navigation, route }) => {
-  const { email } = route.params;
+  const { email, token } = route.params;
   const progress = 1.0;
 
   useEffect(() => {
     console.log('AgeRangeScreen loaded');
-    if (email) {
-      console.log('Email passed from previous screen:', email);
+    console.log('Token received:', token); // Add this log
+    if (!email || !token) {
+      console.log('Missing credentials - Email:', email, 'Token:', token);
+      Alert.alert('Error', 'Missing required credentials.');
     } else {
-      console.log('No email passed!');
-      Alert.alert('Error', 'No email was provided.');
+      console.log('Email passed from previous screen:', email);
     }
-  }, [email]);
+  }, [email, token]);
 
   const saveAgeRange = async (ageRange) => {
     console.log('Saving age range:', ageRange);
+    console.log('Using token for request:', token); // Add this log
 
     try {
       const apiUrl = 'https://7wxy3171va.execute-api.eu-west-2.amazonaws.com/dev/save_preferences';
 
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      };
+      console.log('Request headers:', headers); // Add this log
+
       const data = {
-        email: email,
         age_range: ageRange
       };
+      console.log('Request body:', data); // Add this log
 
       const response = await fetch(apiUrl, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: headers,
         body: JSON.stringify(data),
       });
+
+      const responseData = await response.json();
+      console.log('Complete response:', responseData); // Add this log
 
       if (response.ok) {
         console.log('Age range saved successfully');
         await completeOnboarding();
       } else {
-        const errorMessage = await response.text();
-        console.log(`Error saving age range: ${errorMessage}`);
+        console.log('Error saving age range:', responseData);
         Alert.alert('Error', 'Failed to save your age range. Please try again.');
       }
     } catch (error) {
@@ -53,20 +61,31 @@ const AgeRangeScreen = ({ navigation, route }) => {
     try {
       const apiUrl = 'https://7wxy3171va.execute-api.eu-west-2.amazonaws.com/dev/complete_onboarding';
 
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      };
+      console.log('Complete onboarding headers:', headers); // Add this log
+
       const response = await fetch(apiUrl, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email }),
+        headers: headers,
+        body: JSON.stringify({ 
+          email: email 
+        })
       });
+
+      const responseData = await response.json();
+      console.log('Complete onboarding response:', responseData); // Add this log
 
       if (response.ok) {
         console.log('Onboarding completed successfully');
-        navigation.navigate('Home', { email });
+        navigation.navigate('Home', { 
+          email,
+          token
+        });
       } else {
-        const errorMessage = await response.text();
-        console.log(`Error completing onboarding: ${errorMessage}`);
+        console.log('Error completing onboarding:', responseData);
         Alert.alert('Error', 'Failed to complete onboarding. Please try again.');
       }
     } catch (error) {
@@ -85,16 +104,31 @@ const AgeRangeScreen = ({ navigation, route }) => {
       <ProgressBar progress={progress} />
       <Text style={styles.header}>You fall in which age range?</Text>
 
-      <TouchableOpacity style={styles.optionButton} onPress={() => handleSelectOption('18-25')}>
+      <TouchableOpacity 
+        style={styles.optionButton} 
+        onPress={() => handleSelectOption('18-25')}
+      >
         <Text style={styles.optionText}>18-25</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.optionButton} onPress={() => handleSelectOption('26-35')}>
+
+      <TouchableOpacity 
+        style={styles.optionButton} 
+        onPress={() => handleSelectOption('26-35')}
+      >
         <Text style={styles.optionText}>26-35</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.optionButton} onPress={() => handleSelectOption('36-45')}>
+
+      <TouchableOpacity 
+        style={styles.optionButton} 
+        onPress={() => handleSelectOption('36-45')}
+      >
         <Text style={styles.optionText}>36-45</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.optionButton} onPress={() => handleSelectOption('46+')}>
+
+      <TouchableOpacity 
+        style={styles.optionButton} 
+        onPress={() => handleSelectOption('46+')}
+      >
         <Text style={styles.optionText}>46+</Text>
       </TouchableOpacity>
     </View>

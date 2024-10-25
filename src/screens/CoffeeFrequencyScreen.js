@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import ProgressBar from '../components/ProgressBar';
 
 const CoffeeFrequencyScreen = ({ navigation, route }) => {
-  const { email } = route.params;  // Get the email from the previous screen
+  const { email, token } = route.params;  // Get both email and token
   const progress = 0.6;
   const [selectedOption, setSelectedOption] = useState('');
 
@@ -12,45 +12,47 @@ const CoffeeFrequencyScreen = ({ navigation, route }) => {
     'Trendy and bustling',
     'Classic and traditional',
     'Artsy and unique',
-    'I’m just here for great coffee!',
+    'I am just here for great coffee!',
   ];
 
   useEffect(() => {
-    // Log when the component is mounted and check if email exists
     console.log('CoffeeFrequencyScreen loaded');
-    if (email) {
-      console.log('Email passed from previous screen:', email);
+    if (!email || !token) {
+      console.log('Missing credentials!');
+      Alert.alert('Error', 'Missing required credentials.');
     } else {
-      console.log('No email passed!');
-      Alert.alert('Error', 'No email was provided.');
+      console.log('Email passed from previous screen:', email);
     }
-  }, [email]);
+  }, [email, token]);
 
   const saveShopVibe = async (vibe) => {
-    console.log('Saving coffee shop vibe:', vibe);  // Log the selected option
+    console.log('Saving coffee shop vibe:', vibe);
 
     try {
       const apiUrl = 'https://7wxy3171va.execute-api.eu-west-2.amazonaws.com/dev/save_preferences';
 
       const data = {
-        email: email,  // Use the email passed from the previous screen
-        shop_vibe: vibe  // Save the selected coffee shop vibe
+        shop_vibe: vibe  // Remove email from request body
       };
 
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`  // Add JWT token
         },
         body: JSON.stringify(data),
       });
 
       if (response.ok) {
         console.log('Coffee shop vibe saved successfully');
-        navigation.navigate('Bio', { email });  // Navigate to the next screen and pass the email
+        navigation.navigate('Bio', { 
+          email,
+          token  // Pass token to next screen
+        });
       } else {
-        const errorMessage = await response.text();
-        console.log(`Error saving coffee shop vibe: ${errorMessage}`);
+        const errorData = await response.json();
+        console.log('Error saving coffee shop vibe:', errorData);
         Alert.alert('Error', 'Failed to save your coffee shop vibe. Please try again.');
       }
     } catch (error) {
@@ -60,15 +62,15 @@ const CoffeeFrequencyScreen = ({ navigation, route }) => {
   };
 
   const handleSelectOption = (vibe) => {
-    console.log('Option selected:', vibe);  // Log the selected option
+    console.log('Option selected:', vibe);
     setSelectedOption(vibe);
-    saveShopVibe(vibe);  // Save the selected shop vibe to the backend
+    saveShopVibe(vibe);
   };
 
   return (
     <View style={styles.container}>
       <ProgressBar progress={progress} />
-      <Text style={styles.header}>What’s your favorite coffee shop vibe?</Text>
+      <Text style={styles.header}>What's your favorite coffee shop vibe?</Text>
       
       {options.map((option, index) => (
         <TouchableOpacity
@@ -97,7 +99,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    paddingTop: 80, // Padding to avoid overlapping with status bar
+    paddingTop: 80,
     backgroundColor: '#ffffff',
     justifyContent: 'center',
   },
@@ -115,14 +117,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   selectedOptionButton: {
-    backgroundColor: '#000', // Highlight the selected option
+    backgroundColor: '#000',
   },
   optionText: {
     fontSize: 18,
     color: '#333',
   },
   selectedOptionText: {
-    color: '#fff', // White text for the selected outcome
+    color: '#fff',
   },
 });
 

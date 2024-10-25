@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import ProgressBar from '../components/ProgressBar';
 
 const BioScreen = ({ navigation, route }) => {
-  const { email } = route.params;  // Get the email from the previous screen
+  const { email, token } = route.params;  // Get both email and token
   const progress = 0.8;
   const [selectedOption, setSelectedOption] = useState('');
 
@@ -12,45 +12,47 @@ const BioScreen = ({ navigation, route }) => {
     'A few times a week',
     'Once a week',
     'Occasionally',
-    'I’m more of a homebrew person',
+    'I am more of a homebrew person',
   ];
 
   useEffect(() => {
-    // Log when the component is mounted and check if email exists
     console.log('BioScreen loaded');
-    if (email) {
-      console.log('Email passed from previous screen:', email);
+    if (!email || !token) {
+      console.log('Missing credentials!');
+      Alert.alert('Error', 'Missing required credentials.');
     } else {
-      console.log('No email passed!');
-      Alert.alert('Error', 'No email was provided.');
+      console.log('Email passed from previous screen:', email);
     }
-  }, [email]);
+  }, [email, token]);
 
   const saveVisitFrequency = async (frequency) => {
-    console.log('Saving visit frequency:', frequency);  // Log the selected option
+    console.log('Saving visit frequency:', frequency);
 
     try {
       const apiUrl = 'https://7wxy3171va.execute-api.eu-west-2.amazonaws.com/dev/save_preferences';
 
       const data = {
-        email: email,  // Use the email passed from the previous screen
-        visit_frequency: frequency  // Save the selected visit frequency
+        visit_frequency: frequency  // Remove email from request body
       };
 
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`  // Add JWT token
         },
         body: JSON.stringify(data),
       });
 
       if (response.ok) {
         console.log('Visit frequency saved successfully');
-        navigation.navigate('AgeRange', { email });  // Navigate to the next screen and pass the email
+        navigation.navigate('AgeRange', { 
+          email,
+          token  // Pass token to next screen
+        });
       } else {
-        const errorMessage = await response.text();
-        console.log(`Error saving visit frequency: ${errorMessage}`);
+        const errorData = await response.json();
+        console.log('Error saving visit frequency:', errorData);
         Alert.alert('Error', 'Failed to save your visit frequency. Please try again.');
       }
     } catch (error) {
@@ -60,15 +62,16 @@ const BioScreen = ({ navigation, route }) => {
   };
 
   const handleSelectOption = (frequency) => {
-    console.log('Option selected:', frequency);  // Log the selected frequency
+    console.log('Option selected:', frequency);
     setSelectedOption(frequency);
-    saveVisitFrequency(frequency);  // Save the selected frequency to the backend
+    saveVisitFrequency(frequency);
   };
 
   return (
     <View style={styles.container}>
       <ProgressBar progress={progress} />
       <Text style={styles.header}>How often do you visit coffee shops?</Text>
+      
       {options.map((option, index) => (
         <TouchableOpacity
           key={index}
@@ -96,7 +99,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    paddingTop: 80, // Padding to avoid overlapping with status bar
+    paddingTop: 80,
     backgroundColor: '#ffffff',
     justifyContent: 'center',
   },
@@ -114,14 +117,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   selectedOptionButton: {
-    backgroundColor: '#000', // Highlight the selected option
+    backgroundColor: '#000',
   },
   optionText: {
     fontSize: 18,
     color: '#333',
   },
   selectedOptionText: {
-    color: '#fff', // White text for the selected option
+    color: '#fff',
   },
 });
 
