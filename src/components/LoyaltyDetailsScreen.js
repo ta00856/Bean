@@ -5,24 +5,52 @@ import axios from 'axios';
 
 const LoyaltyDetailsScreen = ({ route, navigation }) => {
   const { email, loyaltyData: initialLoyaltyData } = route.params;
-  const [loyaltyData, setLoyaltyData] = useState(initialLoyaltyData);
-  const [loading, setLoading] = useState(!initialLoyaltyData);
+  const [loyaltyData, setLoyaltyData] = useState({});
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // First load data from initial data
   useEffect(() => {
-    if (!initialLoyaltyData) {
-      fetchLoyaltyData();
+    console.log('Initial Loyalty Data:', initialLoyaltyData);
+    if (initialLoyaltyData) {
+      setLoyaltyData(initialLoyaltyData);
     }
+    // Fetch all data after setting initial data
+    fetchLoyaltyData();
   }, []);
+
+  // Update when new data comes from scanning
+  useEffect(() => {
+    console.log('Updated Loyalty Data:', initialLoyaltyData);
+    if (initialLoyaltyData) {
+      setLoyaltyData(prev => {
+        const newData = { ...prev };
+        // Merge each cafe's data individually
+        Object.keys(initialLoyaltyData).forEach(cafeId => {
+          newData[cafeId] = {
+            ...(prev[cafeId] || {}),
+            ...initialLoyaltyData[cafeId]
+          };
+        });
+        return newData;
+      });
+    }
+  }, [initialLoyaltyData]);
 
   const fetchLoyaltyData = async () => {
     try {
       const response = await axios.get(`https://7wxy3171va.execute-api.eu-west-2.amazonaws.com/dev/user_loyalty_progress?email=${email}`);
-      setLoyaltyData(response.data.loyalty_rewards);
-      setLoading(false);
+      console.log('Fetched Data:', response.data.loyalty_rewards);
+      if (response.data && response.data.loyalty_rewards) {
+        setLoyaltyData(prev => ({
+          ...prev,
+          ...response.data.loyalty_rewards
+        }));
+      }
     } catch (err) {
       console.error('Error fetching loyalty data:', err);
       setError('Failed to fetch loyalty data. Please try again later.');
+    } finally {
       setLoading(false);
     }
   };
@@ -40,21 +68,34 @@ const LoyaltyDetailsScreen = ({ route, navigation }) => {
     }
   };
 
-  if (loading) {
+  const renderCafeItem = (cafeData, cafeId) => {
+    console.log('Rendering cafe:', cafeId, cafeData);
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" />
+      <View key={cafeId} style={styles.shopItem}>
+        <Text style={styles.shopName}>{cafeData.cafe_name || 'Loading...'}</Text>
+        <Text style={styles.location}>{cafeData.location || 'Location updating...'}</Text>
+        <Text style={styles.progress}>
+          Status: {cafeData.status || 'pending'}
+        </Text>
+        <Text style={styles.purchases}>
+          Current no.of purchases done: {cafeData.current_purchases || 0}
+        </Text>
+        <Text style={styles.threshold}>
+          Total purchases need to be done: {cafeData.threshold || 0}
+        </Text>
+        <Text style={styles.reward}>
+          Reward: {cafeData.reward_description || 'Not specified'}
+        </Text>
+        <Text style={styles.message}>
+          {getStatusMessage(
+            cafeData.current_purchases,
+            cafeData.threshold,
+            cafeData.status
+          )}
+        </Text>
       </View>
     );
-  }
-
-  if (error) {
-    return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>{error}</Text>
-      </View>
-    );
-  }
+  };
 
   return (
     <ScrollView style={styles.container}>
@@ -64,28 +105,29 @@ const LoyaltyDetailsScreen = ({ route, navigation }) => {
 
       <Text style={styles.header}>Loyalty Progress</Text>
 
-      {loyaltyData && Object.keys(loyaltyData).length > 0 ? (
-        Object.values(loyaltyData).map((cafeData, index) => (
-          <View key={index} style={styles.shopItem}>
-            <Text style={styles.shopName}>{cafeData.cafe_name}</Text>
-            <Text style={styles.location}>{cafeData.location}</Text>
-            <Text style={styles.progress}>
-              Status: {cafeData.status}
-            </Text>
-            <Text style={styles.purchases}>Current no.of purchases done: {cafeData.current_purchases}</Text>
-            <Text style={styles.threshold}>Total purchases need to be done: {cafeData.threshold}</Text>
-            <Text style={styles.reward}>Reward: {cafeData.reward_description || 'Not specified'}</Text>
-            <Text style={styles.message}>
-              {getStatusMessage(cafeData.current_purchases, cafeData.threshold, cafeData.status)}
-            </Text>
-          </View>
-        ))
+      {loading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" />
+        </View>
+      )}
+
+      {error && (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      )}
+
+      {Object.keys(loyaltyData).length > 0 ? (
+        Object.entries(loyaltyData).map(([cafeId, cafeData]) => 
+          renderCafeItem(cafeData, cafeId)
+        )
       ) : (
         <Text style={styles.noDataText}>No loyalty progress data available.</Text>
       )}
     </ScrollView>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {

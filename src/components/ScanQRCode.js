@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Alert, TouchableOpacity } from 'react-native';
 import { BarCodeScanner } from 'expo-barcode-scanner';
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const ScanQRCode = ({ route, navigation }) => {
   const [hasPermission, setHasPermission] = useState(null);
@@ -20,6 +21,14 @@ const ScanQRCode = ({ route, navigation }) => {
     console.log('Scanned QR code data:', data);
 
     try {
+      // Get token from AsyncStorage
+      const token = await AsyncStorage.getItem('userToken');
+      if (!token) {
+        Alert.alert('Error', 'Authentication token not found. Please login again.');
+        navigation.navigate('Login');
+        return;
+      }
+
       const parsedUrl = new URL(data);
       const queryParams = new URLSearchParams(parsedUrl.search);
       const cafeId = queryParams.get('cafe_id');
@@ -30,28 +39,41 @@ const ScanQRCode = ({ route, navigation }) => {
       }
 
       console.log('Sending request to:', 'https://7wxy3171va.execute-api.eu-west-2.amazonaws.com/dev/scan_qr');
-      console.log('Request payload:', { email, cafe_id: cafeId, reward_id: rewardId });
+      console.log('Request payload:', { cafe_id: cafeId, reward_id: rewardId });
 
-      const response = await axios.post('https://7wxy3171va.execute-api.eu-west-2.amazonaws.com/dev/scan_qr', {
-        email: email,
-        cafe_id: cafeId,
-        reward_id: rewardId,
-      });
+      const response = await axios.post(
+        'https://7wxy3171va.execute-api.eu-west-2.amazonaws.com/dev/scan_qr',
+        {
+          cafe_id: cafeId,
+          reward_id: rewardId,
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
 
       console.log('API Response:', response.data);
 
       if (response.data && response.data.loyalty_rewards) {
-        navigation.navigate('LoyaltyDetails', { 
+        navigation.navigate('LoyaltyDetails', {
           email: email,
-          loyaltyData: response.data.loyalty_rewards 
+          loyaltyData: response.data.loyalty_rewards
         });
       } else {
         throw new Error('Invalid API response format');
       }
     } catch (error) {
       console.error('Error scanning QR code:', error);
-      Alert.alert('Error', 'Failed to scan QR code. Please try again.');
-      setScanned(false);
+      if (error.response?.status === 401) {
+        Alert.alert('Authentication Error', 'Please login again.');
+        navigation.navigate('Login');
+      } else {
+        Alert.alert('Error', 'Failed to scan QR code. Please try again.');
+        setScanned(false);
+      }
     }
   };
 
@@ -69,7 +91,10 @@ const ScanQRCode = ({ route, navigation }) => {
         style={StyleSheet.absoluteFillObject}
       />
       {scanned && (
-        <TouchableOpacity style={styles.scanAgainButton} onPress={() => setScanned(false)}>
+        <TouchableOpacity 
+          style={styles.scanAgainButton} 
+          onPress={() => setScanned(false)}
+        >
           <Text style={styles.scanAgainText}>Tap to Scan Again</Text>
         </TouchableOpacity>
       )}
