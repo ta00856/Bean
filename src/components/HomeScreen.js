@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, TextInput, Image, StyleSheet, ScrollView, TouchableOpacity, Alert, SafeAreaView, Keyboard } from 'react-native';
 import { Ionicons } from '@expo/vector-icons'; // Ionicons for icons
 import * as Location from 'expo-location';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const HomeScreen = ({ navigation, route }) => {
   const { email } = route.params; // Retrieve email from previous screen's route params
@@ -12,6 +13,7 @@ const HomeScreen = ({ navigation, route }) => {
   const [coffeeShops, setCoffeeShops] = useState([]);
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [total, setTotal] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
   const locationFetched = useRef(false);
 
   // Google API Key (for both Places and Geocoding)
@@ -167,12 +169,114 @@ const HomeScreen = ({ navigation, route }) => {
     AsyncStorage.removeItem('orderPlaced');
   };
 
+  
+  const handleLogout = async () => {
+    Alert.alert(
+      "Logout",
+      "Are you sure you want to logout?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        { 
+          text: "Logout",
+          onPress: async () => {
+            try {
+              setIsLoading(true);
+              
+              // Get the stored token
+              const authDataStr = await AsyncStorage.getItem('authData');
+              if (!authDataStr) {
+                throw new Error('No authentication data found');
+              }
+              
+              const authData = JSON.parse(authDataStr);
+              
+              const response = await fetch(
+                'https://7wxy3171va.execute-api.eu-west-2.amazonaws.com/dev/logout',
+                {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authData.accessToken}`
+                  }
+                }
+              );
+  
+              if (response.ok) {
+                // Clear all auth data
+                await AsyncStorage.multiRemove(['authData', 'accessToken', 'orderPlaced']);
+                
+                // Reset navigation to Login
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'Login' }],
+                });
+              } else {
+                const result = await response.json();
+                if (response.status === 401) {
+                  // Token expired or invalid - force logout
+                  await AsyncStorage.multiRemove(['authData', 'accessToken', 'orderPlaced']);
+                  navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Login' }],
+                  });
+                } else {
+                  throw new Error(result.error || 'Failed to logout');
+                }
+              }
+            } catch (error) {
+              console.error('Logout error:', error);
+              Alert.alert(
+                'Error',
+                'Failed to logout. Please try again.'
+              );
+              
+              // If there's an auth error, force logout
+              if (error.message.includes('authentication') || error.message.includes('token')) {
+                await AsyncStorage.multiRemove(['authData', 'accessToken', 'orderPlaced']);
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'Login' }],
+                });
+              }
+            } finally {
+              setIsLoading(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+
+
+
+
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <View style={styles.headerContainer}>
           <Text style={styles.locationText}>{address}</Text>
           <View style={styles.iconContainer}>
+
+
+          <TouchableOpacity 
+      onPress={handleLogout}
+      disabled={isLoading}
+    >
+      <Ionicons 
+        name="log-out-outline" 
+        size={30} 
+        color={isLoading ? "#cccccc" : "black"} 
+        style={styles.logoutIcon} 
+      />
+    </TouchableOpacity>
+
+
+
             <TouchableOpacity onPress={() => navigation.navigate('ScanQRCode', { email: email })}>
               <Ionicons name="qr-code-outline" size={30} color="black" style={styles.scanIcon} />
             </TouchableOpacity>
@@ -271,6 +375,10 @@ const styles = StyleSheet.create({
   iconContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  logoutIcon: {
+    marginRight: 15,
+    opacity: 0.8, // Makes the icon slightly softer
   },
   scanIcon: {
     marginRight: 15,

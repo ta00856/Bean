@@ -21,6 +21,11 @@ import CafeOwnerLoginScreen from './components/CafeOwnerLoginScreen';
 import CafeOwnerDashboardScreen from './components/CafeOwnerDashboardScreen';
 import ScanQRCode from './components/ScanQRCode'
 import OtpVerificationScreen from './components/OtpVerificationScreen'
+import ForgotPasswordScreen from './components/ForgotPasswordScreen';
+import ResetPasswordVerificationScreen from './components/ResetPasswordVerificationScreen';
+import NewPasswordScreen from './components/NewPasswordScreen';
+
+
 
 
 // Create the Stack Navigator
@@ -124,6 +129,9 @@ function AppNavigator() {
         />
         <Stack.Screen name="ScanQRCode" component={ScanQRCode} 
         />
+        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+<Stack.Screen name="ResetPasswordVerification" component={ResetPasswordVerificationScreen} />
+<Stack.Screen name="NewPassword" component={NewPasswordScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
