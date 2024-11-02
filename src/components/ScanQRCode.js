@@ -16,16 +16,39 @@ const ScanQRCode = ({ route, navigation }) => {
     })();
   }, []);
 
+  const getAuthToken = async () => {
+    try {
+      // Try to get token from both places
+      const accessToken = await AsyncStorage.getItem('accessToken');
+      const authData = await AsyncStorage.getItem('authData');
+      
+      if (accessToken) {
+        return accessToken;
+      } else if (authData) {
+        const parsedAuthData = JSON.parse(authData);
+        return parsedAuthData.accessToken;
+      }
+      
+      throw new Error('No authentication token found');
+    } catch (error) {
+      console.error('Error getting auth token:', error);
+      return null;
+    }
+  };
+
   const handleBarCodeScanned = async ({ type, data }) => {
     setScanned(true);
     console.log('Scanned QR code data:', data);
 
     try {
-      // Get token from AsyncStorage
-      const token = await AsyncStorage.getItem('userToken');
+      // Get token with new method
+      const token = await getAuthToken();
       if (!token) {
-        Alert.alert('Error', 'Authentication token not found. Please login again.');
-        navigation.navigate('Login');
+        Alert.alert('Authentication Error', 'Please login again');
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Login' }],
+        });
         return;
       }
 
@@ -35,53 +58,103 @@ const ScanQRCode = ({ route, navigation }) => {
       const rewardId = queryParams.get('reward_id');
 
       if (!cafeId || !rewardId) {
-        throw new Error('Invalid QR code format - missing parameters');
+        Alert.alert('Invalid QR Code', 'This QR code is not valid for Bean App');
+        setScanned(false);
+        return;
       }
 
-      console.log('Sending request to:', 'https://7wxy3171va.execute-api.eu-west-2.amazonaws.com/dev/scan_qr');
-      console.log('Request payload:', { cafe_id: cafeId, reward_id: rewardId });
+      const apiUrl = 'https://7wxy3171va.execute-api.eu-west-2.amazonaws.com/dev/scan_qr';
+      console.log('Making request to:', apiUrl);
+      console.log('With payload:', { cafe_id: cafeId, reward_id: rewardId });
+      console.log('Token present:', !!token);
 
-      const response = await axios.post(
-        'https://7wxy3171va.execute-api.eu-west-2.amazonaws.com/dev/scan_qr',
-        {
+      const response = await axios({
+        method: 'post',
+        url: apiUrl,
+        data: {
           cafe_id: cafeId,
-          reward_id: rewardId,
+          reward_id: rewardId
         },
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
         }
-      );
+      });
 
-      console.log('API Response:', response.data);
+      console.log('Scan response:', response.data);
 
       if (response.data && response.data.loyalty_rewards) {
-        navigation.navigate('LoyaltyDetails', {
-          email: email,
-          loyaltyData: response.data.loyalty_rewards
-        });
+        Alert.alert(
+          'Success',
+          'QR Code scanned successfully!',
+          [
+            {
+              text: 'View Rewards',
+              onPress: () => navigation.navigate('LoyaltyDetails', {
+                email: email,
+                loyaltyData: response.data.loyalty_rewards
+              })
+            }
+          ]
+        );
       } else {
-        throw new Error('Invalid API response format');
+        throw new Error('Invalid response format');
       }
     } catch (error) {
-      console.error('Error scanning QR code:', error);
+      console.error('Error details:', error.response || error);
+      
       if (error.response?.status === 401) {
-        Alert.alert('Authentication Error', 'Please login again.');
-        navigation.navigate('Login');
+        // Handle token expiration
+        await AsyncStorage.multiRemove(['accessToken', 'authData', 'userToken']);
+        Alert.alert(
+          'Session Expired',
+          'Please login again',
+          [
+            {
+              text: 'OK',
+              onPress: () => navigation.reset({
+                index: 0,
+                routes: [{ name: 'Login' }],
+              })
+            }
+          ]
+        );
       } else {
-        Alert.alert('Error', 'Failed to scan QR code. Please try again.');
-        setScanned(false);
+        Alert.alert(
+          'Error',
+          error.response?.data?.error || 'Failed to scan QR code. Please try again.',
+          [
+            {
+              text: 'Try Again',
+              onPress: () => setScanned(false)
+            }
+          ]
+        );
       }
     }
   };
 
   if (hasPermission === null) {
-    return <Text>Requesting for camera permission</Text>;
+    return (
+      <View style={styles.container}>
+        <Text style={styles.message}>Requesting camera permission...</Text>
+      </View>
+    );
   }
+  
   if (hasPermission === false) {
-    return <Text>No access to camera</Text>;
+    return (
+      <View style={styles.container}>
+        <Text style={styles.message}>No access to camera</Text>
+        <TouchableOpacity 
+          style={styles.button}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={styles.buttonText}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
   }
 
   return (
@@ -107,6 +180,12 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'column',
     justifyContent: 'center',
+    alignItems: 'center',
+  },
+  message: {
+    fontSize: 16,
+    textAlign: 'center',
+    margin: 20,
   },
   scanAgainButton: {
     backgroundColor: 'white',
@@ -119,6 +198,17 @@ const styles = StyleSheet.create({
     color: 'blue',
     textAlign: 'center',
   },
+  button: {
+    backgroundColor: '#000000',
+    padding: 15,
+    borderRadius: 5,
+    marginTop: 20,
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 16,
+    textAlign: 'center',
+  }
 });
 
 export default ScanQRCode;

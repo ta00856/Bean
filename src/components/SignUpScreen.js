@@ -18,52 +18,98 @@ const SignUpScreen = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(false);
 
   const apiUrl = 'https://7wxy3171va.execute-api.eu-west-2.amazonaws.com/dev/signup';
-
+  
   const handleSignup = async () => {
-    if (!email || !password || !phone) {
-      Alert.alert('Error', 'Please fill in all fields');
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      Alert.alert('Error', 'Please enter a valid email address');
-      return;
-    }
-
-    if (phone.length < 10) {
-      Alert.alert('Error', 'Please enter a valid phone number');
-      return;
-    }
-
-    setIsLoading(true);
-    const userData = { email, password, phone };
-    
     try {
+      // Input validation
+      if (!email || !password || !phone) {
+        Alert.alert('Error', 'Please fill in all fields');
+        return;
+      }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        Alert.alert('Error', 'Please enter a valid email address');
+        return;
+      }
+
+      setIsLoading(true);
+
+      // Format the request exactly like Postman
+      const userData = {
+        email: email.trim().toLowerCase(), // ensure email is trimmed and lowercase
+        password: password,
+        phone: phone.startsWith('+') ? phone : `+${phone}`.trim()
+      };
+
+      // Log the request data (excluding password)
+      console.log('Sending request to:', apiUrl);
+      console.log('Request data:', { ...userData, password: '[HIDDEN]' });
+
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          // Add any additional headers your API might expect
+          'User-Agent': 'BeanApp/1.0',
         },
-        body: JSON.stringify(userData),
+        body: JSON.stringify(userData)
       });
 
-      const responseData = await response.json();
+      // Log the raw response
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
+
+      const responseText = await response.text();
+      console.log('Raw response:', responseText);
+
+      // Parse the response if it's JSON
+      let responseData;
+      try {
+        responseData = JSON.parse(responseText);
+      } catch (e) {
+        console.error('Error parsing response:', e);
+        Alert.alert('Error', 'Invalid response from server');
+        return;
+      }
+
+      console.log('Parsed response data:', responseData);
 
       if (response.ok) {
         if (responseData.requiresVerification) {
-          navigation.navigate('OtpVerification', { email });
-          Alert.alert('Success', 'Please check your email for verification code');
+          // Success case
+          Alert.alert(
+            'Success',
+            'Verification code has been sent to your email',
+            [
+              {
+                text: 'OK',
+                onPress: () => navigation.navigate('OtpVerification', { email: userData.email })
+              }
+            ]
+          );
+        } else {
+          Alert.alert('Error', 'Unexpected response from server');
         }
       } else {
+        // Handle specific error cases
+        const errorMessage = responseData.error || 'An unknown error occurred';
         if (response.status === 409) {
-          Alert.alert('Signup Failed', responseData.error);
+          Alert.alert('Account Exists', errorMessage);
+        } else if (response.status === 400) {
+          Alert.alert('Invalid Input', errorMessage);
         } else {
-          Alert.alert('Error', 'Failed to sign up. Please try again.');
+          Alert.alert('Error', `Signup failed: ${errorMessage}`);
         }
       }
+
     } catch (error) {
-      Alert.alert('Network Error', 'Failed to connect to the server.');
+      console.error('Network or parsing error:', error);
+      Alert.alert(
+        'Connection Error',
+        'Unable to connect to the server. Please check your internet connection.'
+      );
     } finally {
       setIsLoading(false);
     }
@@ -84,7 +130,9 @@ const SignUpScreen = ({ navigation }) => {
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
+          autoCorrect={false}
           editable={!isLoading}
+          placeholderTextColor="#666"
         />
 
         <TextInput
@@ -94,15 +142,19 @@ const SignUpScreen = ({ navigation }) => {
           value={password}
           onChangeText={setPassword}
           editable={!isLoading}
+          placeholderTextColor="#666"
+          autoCapitalize="none"
+          autoCorrect={false}
         />
 
         <TextInput
           style={styles.input}
-          placeholder="Phone"
+          placeholder="Phone (e.g., +447123456789)"
           keyboardType="phone-pad"
           value={phone}
           onChangeText={setPhone}
           editable={!isLoading}
+          placeholderTextColor="#666"
         />
 
         <TouchableOpacity 
@@ -117,8 +169,6 @@ const SignUpScreen = ({ navigation }) => {
           )}
         </TouchableOpacity>
 
-      
-
         <TouchableOpacity 
           onPress={() => navigation.navigate('Login')}
           style={[styles.button, { marginTop: 20, backgroundColor: '#3b5998' }]}
@@ -130,6 +180,7 @@ const SignUpScreen = ({ navigation }) => {
     </ImageBackground>
   );
 };
+
 
 const styles = StyleSheet.create({
   backgroundImage: {
@@ -181,6 +232,3 @@ const styles = StyleSheet.create({
 });
 
 export default SignUpScreen;
-
-
-

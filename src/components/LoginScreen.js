@@ -5,7 +5,8 @@ import {
   TextInput, 
   TouchableOpacity, 
   StyleSheet, 
-  Alert 
+  Alert,
+  ActivityIndicator 
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -27,8 +28,13 @@ const LoginScreen = ({ navigation }) => {
         onboardingCompleted: data.onboarding_completed
       };
       
-      await AsyncStorage.setItem('authData', JSON.stringify(authData));
-      await AsyncStorage.setItem('accessToken', data.access_token); // For backward compatibility
+      await AsyncStorage.multiSet([
+        ['authData', JSON.stringify(authData)],
+        ['accessToken', data.access_token],
+        ['userEmail', data.email]
+      ]);
+      
+      console.log('Auth data saved successfully');
     } catch (error) {
       console.error('Error saving auth data:', error);
       throw new Error('Failed to save authentication data');
@@ -50,15 +56,15 @@ const LoginScreen = ({ navigation }) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
         body: JSON.stringify(loginData),
       });
 
       const result = await response.json();
+      console.log('Login response:', result);
 
       if (response.ok) {
-        console.log('Login response:', result);
-
         if (!result.access_token) {
           throw new Error('No access token received');
         }
@@ -68,28 +74,50 @@ const LoginScreen = ({ navigation }) => {
 
         // Navigate based on onboarding status
         if (result.onboarding_completed) {
-          Alert.alert('Login Successful', `Welcome back, ${result.email}`);
-          navigation.reset({
-            index: 0,
-            routes: [{ 
-              name: 'Home',
-              params: { 
-                email: result.email
+          Alert.alert(
+            'Login Successful', 
+            `Welcome back, ${result.email}`,
+            [
+              {
+                text: 'OK',
+                onPress: () => {
+                  navigation.reset({
+                    index: 0,
+                    routes: [{ 
+                      name: 'Home',
+                      params: { 
+                        email: result.email,
+                        token: result.access_token  // Add token to params
+                      }
+                    }],
+                  });
+                }
               }
-            }],
-          });
+            ]
+          );
         } else {
-          Alert.alert('Login Successful', `Welcome ${result.email}. Let's complete your profile.`);
-          console.log('Navigating to CoffeePreference with email:', result.email);
-          navigation.reset({
-            index: 0,
-            routes: [{ 
-              name: 'CoffeePreference',
-              params: { 
-                email: result.email
+          Alert.alert(
+            'Login Successful', 
+            `Welcome ${result.email}. Let's complete your profile.`,
+            [
+              {
+                text: 'OK',
+                onPress: () => {
+                  console.log('Navigating to CoffeePreference with email:', result.email);
+                  navigation.reset({
+                    index: 0,
+                    routes: [{ 
+                      name: 'CoffeePreference',
+                      params: { 
+                        email: result.email,
+                        token: result.access_token  // Add token to params
+                      }
+                    }],
+                  });
+                }
               }
-            }],
-          });
+            ]
+          );
         }
       } else {
         handleLoginError(response.status, result.error);
@@ -109,16 +137,17 @@ const LoginScreen = ({ navigation }) => {
     switch (status) {
       case 401:
         Alert.alert('Login Failed', 'Incorrect password');
-        console.log('Login failed: Incorrect password');
         break;
       case 404:
         Alert.alert('User not found', 'Please sign up first.');
-        console.log('Login failed: User not found');
         break;
       default:
-        Alert.alert('Login Failed', message || 'Something went wrong. Please try again.');
-        console.log(`Login failed with status ${status}:`, message);
+        Alert.alert(
+          'Login Failed', 
+          message || 'Something went wrong. Please try again.'
+        );
     }
+    console.log(`Login failed (${status}):`, message);
   };
 
   return (
@@ -132,7 +161,9 @@ const LoginScreen = ({ navigation }) => {
         value={email}
         onChangeText={setEmail}
         autoCapitalize="none"
+        autoCorrect={false}
         editable={!isLoading}
+        placeholderTextColor="#666666"
       />
 
       <TextInput
@@ -142,6 +173,9 @@ const LoginScreen = ({ navigation }) => {
         value={password}
         onChangeText={setPassword}
         editable={!isLoading}
+        autoCapitalize="none"
+        autoCorrect={false}
+        placeholderTextColor="#666666"
       />
 
       <TouchableOpacity 
@@ -149,9 +183,11 @@ const LoginScreen = ({ navigation }) => {
         onPress={handleLogin}
         disabled={isLoading}
       >
-        <Text style={styles.buttonText}>
-          {isLoading ? 'Logging in...' : 'Login'}
-        </Text>
+        {isLoading ? (
+          <ActivityIndicator color="#ffffff" size="small" />
+        ) : (
+          <Text style={styles.buttonText}>Login</Text>
+        )}
       </TouchableOpacity>
 
       <TouchableOpacity 
@@ -185,14 +221,18 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     paddingLeft: 8,
     borderRadius: 5,
+    backgroundColor: '#ffffff',
+    fontSize: 16,
   },
   button: {
     backgroundColor: '#000000',
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 12,
     borderRadius: 5,
     alignItems: 'center',
     marginTop: 20,
+    minHeight: 45,
+    justifyContent: 'center',
   },
   buttonDisabled: {
     backgroundColor: '#666666',

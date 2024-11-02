@@ -285,11 +285,7 @@ const HomeScreen = ({ navigation, route }) => {
               <Ionicons name="ribbon-outline" size={30} color="black" style={styles.loyaltyIcon} />
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => navigation.navigate('ReviewedCafes')}>
-              <View style={styles.profileIcon}>
-                <Text style={styles.profileText}>A</Text>
-              </View>
-            </TouchableOpacity>
+           
           </View>
         </View>
 
@@ -327,7 +323,7 @@ const HomeScreen = ({ navigation, route }) => {
               <TouchableOpacity
                 key={shop.id}
                 style={styles.shopItem}
-                onPress={() => navigation.navigate('Menu', { shopName: shop.name, menu: shop.menu })}
+                
               >
                 {shop.image ? (
                   <Image
