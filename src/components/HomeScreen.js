@@ -1,26 +1,25 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, TextInput, Image, StyleSheet, ScrollView, TouchableOpacity, Alert, SafeAreaView, Keyboard } from 'react-native';
-import { Ionicons } from '@expo/vector-icons'; // Ionicons for icons
+import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const HomeScreen = ({ navigation, route }) => {
-  const { email } = route.params; // Retrieve email from previous screen's route params
+  const { email } = route.params;
   const [location, setLocation] = useState(null);
-  const [manualLocation, setManualLocation] = useState(''); // Manual location input
+  const [manualLocation, setManualLocation] = useState('');
   const [address, setAddress] = useState('Fetching location...');
   const [errorMsg, setErrorMsg] = useState(null);
-  const [coffeeShops, setCoffeeShops] = useState([]);
+  const [registeredCafes, setRegisteredCafes] = useState([]);
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const locationFetched = useRef(false);
 
-  // Google API Key (for both Places and Geocoding)
-  const googleApiKey = 'AIzaSyDtqiqQ8nZcCoFvVJE-2sOvsn7fecogtsE'; // Replace this with your Google API key
+  const googleApiKey = 'AIzaSyDtqiqQ8nZcCoFvVJE-2sOvsn7fecogtsE';
 
   useEffect(() => {
-    const getLocationAndCoffeeShops = async () => {
+    const getLocationAndCafes = async () => {
       if (locationFetched.current) return;
 
       try {
@@ -37,7 +36,7 @@ const HomeScreen = ({ navigation, route }) => {
         const longitude = currentLocation.coords.longitude;
 
         fetchAddress(latitude, longitude);
-        fetchCoffeeShops(latitude, longitude);
+        await fetchRegisteredCafes(latitude, longitude);
 
         locationFetched.current = true;
       } catch (error) {
@@ -59,14 +58,10 @@ const HomeScreen = ({ navigation, route }) => {
       }
     };
 
-    getLocationAndCoffeeShops();
+    getLocationAndCafes();
     checkOrderPlaced();
-
-    // Log the email passed from the previous screen
-    console.log('Email passed to HomeScreen:', email);
   }, [email]);
 
-  // Function to fetch address using reverse geocoding
   const fetchAddress = async (latitude, longitude) => {
     try {
       const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${googleApiKey}`;
@@ -82,7 +77,6 @@ const HomeScreen = ({ navigation, route }) => {
         setAddress(readableAddress);
       } else {
         setAddress('Unable to fetch address');
-        console.error('Error fetching address:', result.status);
       }
     } catch (error) {
       console.error('Error fetching address:', error);
@@ -90,39 +84,8 @@ const HomeScreen = ({ navigation, route }) => {
     }
   };
 
-  // Function to fetch coffee shops
-  const fetchCoffeeShops = async (latitude, longitude) => {
-    try {
-      const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${latitude},${longitude}&radius=1500&type=cafe&keyword=coffee&key=${googleApiKey}`;
-      const response = await fetch(url);
-      const result = await response.json();
-
-      const coffeeShopsData = result.results.map(shop => {
-        const shopLat = shop.geometry.location.lat;
-        const shopLng = shop.geometry.location.lng;
-        const distance = calculateDistance(latitude, longitude, shopLat, shopLng);
-
-        return {
-          id: shop.place_id,
-          name: shop.name,
-          distance: `${distance.toFixed(1)} miles away`,
-          status: shop.opening_hours ? (shop.opening_hours.open_now ? 'Open Now' : 'Closed') : 'Unknown',
-          image: shop.photos
-            ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${shop.photos[0].photo_reference}&key=${googleApiKey}`
-            : null,
-        };
-      });
-
-      setCoffeeShops(coffeeShopsData);
-    } catch (error) {
-      console.error('Error fetching coffee shops:', error);
-      Alert.alert('Error', 'Failed to fetch coffee shops. Please try again later.');
-    }
-  };
-
-  // Haversine formula to calculate the distance between two latitude/longitude points
   const calculateDistance = (lat1, lon1, lat2, lon2) => {
-    const R = 6371e3; // Earth's radius in meters
+    const R = 6371e3;
     const toRadians = degree => degree * (Math.PI / 180);
 
     const φ1 = toRadians(lat1);
@@ -130,16 +93,98 @@ const HomeScreen = ({ navigation, route }) => {
     const Δφ = toRadians(lat2 - lat1);
     const Δλ = toRadians(lon2 - lon1);
 
-    const a =
-      Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
       Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
-    const distance = R * c; // in meters
-    return distance / 1609.34; // Convert to miles
+    const distance = R * c;
+    return distance / 1609.34;
   };
 
-  // Function to handle manual location search
+  const fetchCafePhoto = async (location, cafeName) => {
+    try {
+      const searchUrl = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(cafeName)}&inputtype=textquery&locationbias=point:${location.latitude},${location.longitude}&fields=photos&key=${googleApiKey}`;
+      const response = await fetch(searchUrl);
+      const result = await response.json();
+
+      if (result.candidates && result.candidates[0] && result.candidates[0].photos) {
+        const photoReference = result.candidates[0].photos[0].photo_reference;
+        return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${photoReference}&key=${googleApiKey}`;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error fetching cafe photo:', error);
+      return null;
+    }
+  };
+
+
+
+  const getCoordinatesFromAddress = async (address) => {
+  try {
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${googleApiKey}`;
+    const response = await fetch(url);
+    const result = await response.json();
+
+    if (result.status === 'OK') {
+      const { lat, lng } = result.results[0].geometry.location;
+      return { latitude: lat, longitude: lng };
+    } else {
+      console.error(`Geocoding error: ${result.status}`);
+      return null;
+    }
+  } catch (error) {
+    console.error('Error fetching coordinates:', error);
+    return null;
+  }
+};
+
+const fetchRegisteredCafes = async (latitude, longitude) => {
+  try {
+    setIsLoading(true);
+    const response = await fetch('https://7wxy3171va.execute-api.eu-west-2.amazonaws.com/dev/get_all_cafe_owners');
+    const cafes = await response.json();
+
+    const approvedCafes = cafes.filter(cafe => cafe.status === 'approved');
+
+    const enhancedCafes = await Promise.all(
+      approvedCafes.map(async (cafe) => {
+        // Fetch coordinates for the cafe location
+        const cafeCoords = await getCoordinatesFromAddress(cafe.location);
+
+        if (cafeCoords) {
+          const distance = calculateDistance(latitude, longitude, cafeCoords.latitude, cafeCoords.longitude);
+          const photoUrl = await fetchCafePhoto({ latitude, longitude }, cafe.cafe_name);
+
+          return {
+            id: cafe.owner_id,
+            name: cafe.cafe_name,
+            distance: `${distance.toFixed(1)} miles away`,
+            status: 'Open Now',
+            image: photoUrl,
+            location: cafe.location
+          };
+        } else {
+          console.error(`Could not fetch coordinates for cafe: ${cafe.cafe_name}`);
+          return null;
+        }
+      })
+    );
+
+    const sortedCafes = enhancedCafes
+      .filter(cafe => cafe !== null)
+      .sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance));
+
+    setRegisteredCafes(sortedCafes);
+    setIsLoading(false);
+  } catch (error) {
+    console.error('Error fetching registered cafes:', error);
+    Alert.alert('Error', 'Failed to fetch coffee shops. Please try again later.');
+    setIsLoading(false);
+  }
+};
+
+
   const handleManualLocationSearch = async () => {
     if (!manualLocation) return;
     Keyboard.dismiss();
@@ -152,7 +197,7 @@ const HomeScreen = ({ navigation, route }) => {
       if (result.status === 'OK') {
         const { lat, lng } = result.results[0].geometry.location;
         setLocation({ coords: { latitude: lat, longitude: lng } });
-        fetchCoffeeShops(lat, lng);
+        await fetchRegisteredCafes(lat, lng);
       } else {
         setErrorMsg('Location not found. Please try another address.');
       }
@@ -169,7 +214,6 @@ const HomeScreen = ({ navigation, route }) => {
     AsyncStorage.removeItem('orderPlaced');
   };
 
-  
   const handleLogout = async () => {
     Alert.alert(
       "Logout",
@@ -185,7 +229,6 @@ const HomeScreen = ({ navigation, route }) => {
             try {
               setIsLoading(true);
               
-              // Get the stored token
               const authDataStr = await AsyncStorage.getItem('authData');
               if (!authDataStr) {
                 throw new Error('No authentication data found');
@@ -205,10 +248,7 @@ const HomeScreen = ({ navigation, route }) => {
               );
   
               if (response.ok) {
-                // Clear all auth data
                 await AsyncStorage.multiRemove(['authData', 'accessToken', 'orderPlaced']);
-                
-                // Reset navigation to Login
                 navigation.reset({
                   index: 0,
                   routes: [{ name: 'Login' }],
@@ -216,7 +256,6 @@ const HomeScreen = ({ navigation, route }) => {
               } else {
                 const result = await response.json();
                 if (response.status === 401) {
-                  // Token expired or invalid - force logout
                   await AsyncStorage.multiRemove(['authData', 'accessToken', 'orderPlaced']);
                   navigation.reset({
                     index: 0,
@@ -228,12 +267,8 @@ const HomeScreen = ({ navigation, route }) => {
               }
             } catch (error) {
               console.error('Logout error:', error);
-              Alert.alert(
-                'Error',
-                'Failed to logout. Please try again.'
-              );
+              Alert.alert('Error', 'Failed to logout. Please try again.');
               
-              // If there's an auth error, force logout
               if (error.message.includes('authentication') || error.message.includes('token')) {
                 await AsyncStorage.multiRemove(['authData', 'accessToken', 'orderPlaced']);
                 navigation.reset({
@@ -250,32 +285,23 @@ const HomeScreen = ({ navigation, route }) => {
     );
   };
 
-
-
-
-
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <View style={styles.headerContainer}>
           <Text style={styles.locationText}>{address}</Text>
           <View style={styles.iconContainer}>
-
-
-          <TouchableOpacity 
-      onPress={handleLogout}
-      disabled={isLoading}
-    >
-      <Ionicons 
-        name="log-out-outline" 
-        size={30} 
-        color={isLoading ? "#cccccc" : "black"} 
-        style={styles.logoutIcon} 
-      />
-    </TouchableOpacity>
-
-
+            <TouchableOpacity 
+              onPress={handleLogout}
+              disabled={isLoading}
+            >
+              <Ionicons 
+                name="log-out-outline" 
+                size={30} 
+                color={isLoading ? "#cccccc" : "black"} 
+                style={styles.logoutIcon} 
+              />
+            </TouchableOpacity>
 
             <TouchableOpacity onPress={() => navigation.navigate('ScanQRCode', { email: email })}>
               <Ionicons name="qr-code-outline" size={30} color="black" style={styles.scanIcon} />
@@ -284,8 +310,6 @@ const HomeScreen = ({ navigation, route }) => {
             <TouchableOpacity onPress={() => navigation.navigate('LoyaltyDetails', { email: email })}>
               <Ionicons name="ribbon-outline" size={30} color="black" style={styles.loyaltyIcon} />
             </TouchableOpacity>
-
-           
           </View>
         </View>
 
@@ -317,34 +341,42 @@ const HomeScreen = ({ navigation, route }) => {
           </TouchableOpacity>
 
           <View style={styles.shopContainer}>
-            <Text style={styles.sectionTitle}>Nearest Coffee Shops</Text>
+            <Text style={styles.sectionTitle}>Nearest Coffee Shops registered on Bean</Text>
 
-            {coffeeShops.map(shop => (
-              <TouchableOpacity
-                key={shop.id}
-                style={styles.shopItem}
-                
-              >
-                {shop.image ? (
-                  <Image
-                    source={{ uri: shop.image }}
-                    style={styles.shopImage}
-                  />
-                ) : (
-                  <View style={styles.shopPlaceholderImage} />
-                )}
-                <View style={styles.shopDetails}>
-                  <Text style={styles.shopName}>{shop.name}</Text>
-                  <Text style={styles.shopInfo}>{shop.distance} • {shop.status}</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
+            {isLoading ? (
+              <View style={styles.loadingContainer}>
+                <Text>Loading cafes...</Text>
+              </View>
+            ) : registeredCafes.length === 0 ? (
+              <Text style={styles.noCafesText}>No registered cafes found nearby</Text>
+            ) : (
+              registeredCafes.map(shop => (
+                <TouchableOpacity
+                  key={shop.id}
+                  style={styles.shopItem}
+                >
+                  {shop.image ? (
+                    <Image
+                      source={{ uri: shop.image }}
+                      style={styles.shopImage}
+                    />
+                  ) : (
+                    <View style={styles.shopPlaceholderImage} />
+                  )}
+                  <View style={styles.shopDetails}>
+                    <Text style={styles.shopName}>{shop.name}</Text>
+                    <Text style={styles.shopInfo}>{shop.distance} • {shop.status}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))
+            )}
           </View>
         </ScrollView>
       </View>
     </SafeAreaView>
   );
 };
+
 
 // Add styles for the manual search functionality
 const styles = StyleSheet.create({
@@ -483,6 +515,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#555',
   },
+  loadingContainer: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  noCafesText: {
+    padding: 20,
+    textAlign: 'center',
+    color: '#666',
+  }
 });
 
-export default HomeScreen;
+export default HomeScreen;  
